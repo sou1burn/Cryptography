@@ -5,7 +5,6 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-#include <locale>
 
 std::string encrypt(std::string& open_text, std::vector<size_t>& key);
 

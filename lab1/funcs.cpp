@@ -2,11 +2,11 @@
 
 std::string encrypt(std::string &text, std::vector<size_t> &key)
 {
-    std::setlocale(LC_ALL, "ru_RU.UTF-8");
 
     size_t m = key[0];
     size_t s = key[1];
     size_t p = key[2];
+    
     std::vector<std::vector<std::string>> matrix(m, std::vector<std::string>(s, std::string(p, ' ')));
 
     size_t idx = 0;
@@ -20,6 +20,16 @@ std::string encrypt(std::string &text, std::vector<size_t> &key)
                 matrix[i][j][k] = text[idx++];
             }
         }
+    }
+
+    std::cout << "\nМатрица после заполнения текстом:\n";
+    for (size_t i = 0; i < m; ++i)
+    {
+        for (size_t j = 0; j < s; ++j)
+        {
+            std::cout << matrix[i][j] << " ";
+        }
+        std::cout << std::endl;
     }
 
     std::string encrypted_text = "";
@@ -52,7 +62,6 @@ tralivali*/
 tlarilavi*/
 std::string decrypt(std::string &encrypted_text, std::vector<size_t> &key)
 {
-    std::setlocale(LC_ALL, "ru_RU.UTF-8");
 
     size_t m = key[0];
     size_t s = key[1];
@@ -72,6 +81,16 @@ std::string decrypt(std::string &encrypted_text, std::vector<size_t> &key)
                 matrix[i][j][k] = encrypted_text[idx++];
             }
         }
+    }
+
+    std::cout << "\nМатрица после заполнения текстом:\n";
+    for (size_t i = 0; i < m; ++i)
+    {
+        for (size_t j = 0; j < s; ++j)
+        {
+            std::cout << matrix[i][j] << " ";
+        }
+        std::cout << std::endl;
     }
 
     idx = 0;

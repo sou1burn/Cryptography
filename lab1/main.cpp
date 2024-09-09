@@ -5,7 +5,6 @@
 
 int main()
 {
-    std::setlocale(LC_ALL, "ru_RU.UTF-8");
     char c;
 
     std::cout << "Choose how to input a string:\n 1.Read from file \n 2.Input a string from console\n";
@@ -57,14 +56,22 @@ int main()
     default:
         std::cerr << "No such variant, please try again with 1 or 2\n";
     }
-
-    std::cout << "Enter number of rows: \n";
+    
     size_t m, s, p;
-    std::cin >> m;
-    std::cout << "Enter number of cols: \n";
-    std::cin >> s;
-    std::cout << "Enter number of letter in a cell: \n";
-    std::cin >> p;
+
+    do
+    {
+        std::cout << "Enter number of rows: \n";
+        std::cin >> m;
+        std::cout << "Enter number of cols: \n";
+        std::cin >> s;
+        std::cout << "Enter number of letter in a cell: \n";
+        std::cin >> p;
+        if ((m * s * p) < open_text.size())
+        {
+            std::cout << "\nWarning! Matrix cannot contain all charachters of your string. Please enter different matrix size >= " << open_text.size() << "\n";
+        }
+    } while (open_text.size() < (m * s * p));
 
     std::vector<size_t> key = {m,s,p};
 
