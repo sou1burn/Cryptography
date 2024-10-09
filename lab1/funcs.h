@@ -8,6 +8,7 @@
 #include<set>
 #include<map>
 #include <iomanip>
+#include <cctype>
 
 std::vector<char> create_alph();
 
@@ -19,7 +20,7 @@ std::string caesar_cipher_encrypt(std::string open_text, size_t key);
 
 std::string caesar_cipher_decrypt(std::string secret_text, size_t key);
 
-std::map<char, double> frequency_analizer(std::string text);
+std::map<char, double> frequency_analizer(std::string& text);
 
 char find_closest_match(char symbol, std::map<char, double>& letter_freq, double encrypted_freq);
 

@@ -165,7 +165,7 @@ std::string caesar_cipher_encrypt(std::string open_text, size_t key)
     }
 
     std::cout << "Your entered string: \n"
-              << open_text << "\nYour decrypted string: \n"
+              << open_text << "\nYour encrypted string: \n"
               << encrypted_text << "\n";
 
     return encrypted_text;
@@ -198,7 +198,8 @@ std::string caesar_cipher_decrypt(std::string secret_text, size_t key)
             size_t new_idx = (idx + n - (key % n)) % n;
             decrypted_text += alphabet[new_idx];
         }
-        else{
+        else
+        {
             decrypted_text += symbol;
         }
 
@@ -213,19 +214,21 @@ std::string caesar_cipher_decrypt(std::string secret_text, size_t key)
 
 
 
-std::map<char, double> frequency_analizer(std::string text)
+std::map<char, double> frequency_analizer(std::string& text)
 {
     std::map<char, int> freq_map;
+    size_t chars_count = 0;
 
     for (char c : text)
     {
-        freq_map[c]++;
+        c = std::toupper(c);
+        if (std::isalpha(c))
+        {
+            freq_map[c]++;
+            chars_count++;
+        }
     }
 
-    int max_val = std::max_element(freq_map.begin(), freq_map.end(),
-                                 [](const std::pair<char, int> &a, const std::pair<char, int> &b){return a.second > b.second;})->second;
-        
-    size_t chars_count = text.length();
 
     std::map<char, double> percent_map;
 
@@ -236,7 +239,7 @@ std::map<char, double> frequency_analizer(std::string text)
         char symbol = pair.first;
         int count = pair.second;
 
-        percent_map[symbol] = (static_cast<double>(count) / chars_count) * 100;
+        percent_map[symbol] = (static_cast<double>(count) / static_cast<double>(chars_count)) * 100;
 
         std::cout << std::setw(3) << symbol << " : " << std::string(count, '*') << " (" << count << ")\n";
     }
