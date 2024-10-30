@@ -6,9 +6,12 @@
 #include <vector>
 #include <string>
 #include <cstdlib>
+#include <random>
 
 #ifndef BMP_h
 #define Bmp_h
+namespace lab2
+{
 
 using byte = uint8_t;
 
@@ -49,11 +52,6 @@ private:
     BmpInfoHeader info_header;
     std::vector<byte> pixel_data;
 
-public:
-    void read_data(const std::string& filename);
-
-    void rewrite_bmp(const std::string& filename, std::vector<byte> data);
-
     const std::vector<byte>& get_pixel_data(){ return pixel_data; };
 
     size_t get_pixel_data_size() const { return pixel_data.size(); };
@@ -61,6 +59,13 @@ public:
     const BmpFileHeader& get_file_header() { return file_header; };
 
     const BmpInfoHeader& get_info_header() { return info_header; };
+
+public:
+    void read_data(const std::string& filename);
+
+    void rewrite_bmp(const std::string& filename, std::vector<byte> data);
+
 };
 
+}
 #endif

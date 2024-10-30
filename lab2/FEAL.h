@@ -2,28 +2,60 @@
 #ifndef funcs_h
 #define funcs_h
 
+namespace lab2{
 
-using byte = uint8_t;
-using block = std::vector<byte>;
+
+
+using Block = std::vector<byte>;
+
+
+struct Key 
+{
+    Block key;
+
+    Key() : key(16, 0) {};
+
+    Block key_generator()
+    {
+        for (size_t i = 0; i < key.size(); ++i)
+        {
+            key[i] = rand() % 256; 
+        }
+    }
+    
+};
 
 class FEAL_crypt
 {
+
 private:
     static const int rounds = 32;
-    byte F(byte x, byte k);
+
+    byte S0(byte a, byte b);
+
+    byte S1(byte a, byte b);
+
+    Block F(Block& data, Block& key);
+
+    Block Fk(Block& w, Block& w1);
+
     void feal_round(byte& left, byte& right, byte k);
-    std::vector<byte> generate_subkeys(byte key, int rounds);
-    void encrypt_block(std::vector<byte>& block, byte key);
-    void decrypt_block(std::vector<byte>& block, byte key);
+
+    Block generate_rkeys(Block key, size_t rounds);
+
+    void encrypt_block(Block& block, byte key);
+
+    void decrypt_block(Block& block, byte key);
+
 
 public:
-    void encrypt(std::vector<byte>& block, byte key);
+    void encrypt(Block& block, byte key);
 
-    void decrypt(std::vector<byte>& block, byte key);
+    void decrypt(Block& block, byte key);
 
 };
 
-
+}
 
 
 #endif

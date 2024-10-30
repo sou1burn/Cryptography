@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/volodya/projects/cryptography/lab1",
+  "command": "/usr/bin/c++    -g -O0 -Wall -Wextra -Wpedantic -finput-charset=UTF-8 -fexec-charset=UTF-8 -std=gnu++17 -o CMakeFiles/lab1.dir/main.cpp.o -c /home/volodya/projects/cryptography/lab1/main.cpp",
+  "file": "/home/volodya/projects/cryptography/lab1/main.cpp"
+},
+{
+  "directory": "/home/volodya/projects/cryptography/lab1",
+  "command": "/usr/bin/c++    -g -O0 -Wall -Wextra -Wpedantic -finput-charset=UTF-8 -fexec-charset=UTF-8 -std=gnu++17 -o CMakeFiles/lab1.dir/funcs.cpp.o -c /home/volodya/projects/cryptography/lab1/funcs.cpp",
+  "file": "/home/volodya/projects/cryptography/lab1/funcs.cpp"
+}
+]

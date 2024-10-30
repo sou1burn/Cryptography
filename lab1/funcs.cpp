@@ -258,7 +258,7 @@ std::map<char, double> frequency_analizer(std::string& text)
 
 
 
-char find_closest_match(char symbol, std::map<char, double>& letter_freq, double encrypted_freq)
+char find_closest_match(std::map<char, double>& letter_freq, double encrypted_freq)
 {
     char closest = '\0';
 
@@ -294,7 +294,7 @@ std::string text_prediction(std::map<char, double>& letter_freq, std::map<char, 
 
         double encrypted_freq = pair.second;
 
-        char closest_symbol = find_closest_match(encrypted_symbol, letter_freq, encrypted_freq);
+        char closest_symbol = find_closest_match(letter_freq, encrypted_freq);
 
         decryption_map[encrypted_symbol] = closest_symbol;
     }

@@ -1,4 +1,6 @@
 #include "BMP.h"
+namespace lab2
+{
 
 void BmpReader::read_data(const std::string& filename)
 {
@@ -51,10 +53,12 @@ void BmpReader::rewrite_bmp(const std::string& filename, std::vector<uint8_t> da
 
     if(data.size() != pixel_data.size())
     {
-        throw std::runtime_error("Size of pizel data != original pixel data size");
+        throw std::runtime_error("Size of pixel data != original pixel data size");
     }
 
     out.write(reinterpret_cast<char*>(data.data()), data.size());
 
     out.close();
 }
+
+} 
