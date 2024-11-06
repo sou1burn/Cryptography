@@ -1,0 +1,5 @@
+{
+    "program": "${workspaceFolder}/build/main",
+    "cwd": "${workspaceFolder}/build",
+    "miDebuggerPath": "/usr/bin/gdb"
+}

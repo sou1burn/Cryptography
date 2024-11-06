@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
@@ -8,10 +9,10 @@
 #include <cstdlib>
 #include <random>
 
-#ifndef BMP_h
-#define Bmp_h
 namespace lab2
 {
+#ifndef BMP_h
+#define Bmp_h
 
 using byte = uint8_t;
 
@@ -65,7 +66,11 @@ public:
 
     void rewrite_bmp(const std::string& filename, std::vector<byte> data);
 
+    void encrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size);
+
+    void decrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size);
 };
 
-}
+
 #endif
+}
