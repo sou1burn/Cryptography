@@ -8,6 +8,7 @@
 #include <string>
 #include <cstdlib>
 #include <random>
+#include "FEAL.h"
 
 namespace lab2
 {
@@ -66,9 +67,9 @@ public:
 
     void rewrite_bmp(const std::string& filename, std::vector<byte> data);
 
-    void encrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size);
+    void encrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size, Key &key);
 
-    void decrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size);
+    void decrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size, Key &key);
 };
 
 

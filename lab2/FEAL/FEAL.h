@@ -1,5 +1,14 @@
 #pragma once
-#include "BMP.h"
+#include "Key.h"
+#include <iostream>
+#include <fstream>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <string>
+#include <cstdlib>
+#include <random>
 namespace lab2
 {
 
@@ -8,30 +17,6 @@ namespace lab2
 
 using Block = std::vector<byte>;
 
-struct Key 
-{
-    Block key;
-
-    Key() : key(16, 0)
-    {
-        for (size_t i = 0; i < 16; ++i)
-        {
-            key[i] = rand() % 256;
-        }
-
-    };
-    
-    size_t size() const
-    {
-        return key.size();
-    }
-
-    byte& operator[](size_t idx)
-    {
-        return key[idx];
-    }
-
-};
 
 class FEAL_crypt
 {
@@ -52,9 +37,9 @@ private:
 
     void feal_round(Block& L, Block& R, Block& k);
 
-    Block generate_rkeys(Block key, size_t rounds);
+    Block generate_rkeys(Block key, int rounds);
 
-    Block xor_blocks(const Block& a, const Block& b) const;
+    Block xor_blocks(Block& a, Block& b);
 
 public:
 
@@ -64,9 +49,9 @@ public:
 
     FEAL_crypt(int rounds, Key& key);
 
-    void encrypt(Block& data, Block& key);
+    void encrypt(Block& data);
 
-    void decrypt(Block& data, Block& key);
+    void decrypt(Block& data);
 
 };
 

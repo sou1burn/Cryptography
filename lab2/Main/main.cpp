@@ -1,6 +1,5 @@
 #include "BMP.h"
 #include "FEAL.h"
-
 using namespace lab2;
 
 /*void test_feal_crypt() {
@@ -60,17 +59,16 @@ int main(int argc, char** argv)
 
     try
     {
-        
         BmpReader bmp_reader;
-        Key key;  
-        size_t block_size = 16; 
+        Key key;
+        size_t block_size = 8; 
 
         
-        bmp_reader.encrypt_bmp(input_bmp, output_encrypted_bmp, block_size);
+        bmp_reader.encrypt_bmp(input_bmp, output_encrypted_bmp, block_size, key);
         std::cout << "Encryption complete. Encrypted BMP saved to " << output_encrypted_bmp << std::endl;
 
         
-        bmp_reader.decrypt_bmp(output_encrypted_bmp, output_decrypted_bmp, block_size);
+        bmp_reader.decrypt_bmp(output_encrypted_bmp, output_decrypted_bmp, block_size, key);
         std::cout << "Decryption complete. Decrypted BMP saved to " << output_decrypted_bmp << std::endl;
     }
     catch (const std::exception& e)

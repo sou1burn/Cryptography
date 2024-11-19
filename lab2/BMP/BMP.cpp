@@ -1,5 +1,4 @@
 #include "BMP.h"
-#include "FEAL.h"
 
 namespace lab2
 {
@@ -63,16 +62,22 @@ void BmpReader::rewrite_bmp(const std::string& filename, std::vector<byte> data)
     out.close();
 }
 
-void BmpReader::encrypt_bmp(const std::string &input, const std::string &output, size_t block_size)
+void BmpReader::encrypt_bmp(const std::string &input, const std::string &output, size_t block_size, Key &key)
 {
-
-    Key key;
 
     read_data(input);
 
     FEAL_crypt encrypter(32, key);
 
     Block key_block;
+
+    size_t original_size = pixel_data.size();
+
+    if (pixel_data.size() % block_size != 0)
+    {
+        size_t padding = block_size - (pixel_data.size() % block_size);
+        pixel_data.insert(pixel_data.end(), padding, padding); 
+    }
 
     for (size_t i = 0; i < key.size(); ++i)
     {
@@ -83,24 +88,33 @@ void BmpReader::encrypt_bmp(const std::string &input, const std::string &output,
     {
         Block block(pixel_data.begin() + i, pixel_data.begin() + std::min(i + block_size, pixel_data.size()));
         
-        encrypter.encrypt_block(block);
+        encrypter.encrypt(block);
 
         std::copy(block.begin(), block.end(), pixel_data.begin() + i);
 
     }
 
+    pixel_data.resize(original_size);
     rewrite_bmp(output, pixel_data);
 }
 
-void BmpReader::decrypt_bmp(const std::string &input, const std::string &output, size_t block_size)
+void BmpReader::decrypt_bmp(const std::string &input, const std::string &output, size_t block_size, Key &key)
 {
 
-    Key key;
     read_data(input);
 
     FEAL_crypt decryptor(32, key);
 
     Block key_block;
+
+    if (!pixel_data.empty())
+    {
+        byte padding = pixel_data.back();
+        if (padding > 0 && padding <= block_size)
+        {
+            pixel_data.resize(pixel_data.size() - padding);
+        }
+    }   
 
     for (size_t i = 0; i < key.size(); ++i)
     {
@@ -111,7 +125,7 @@ void BmpReader::decrypt_bmp(const std::string &input, const std::string &output,
     {
         Block block(pixel_data.begin() + i, pixel_data.begin() + std::min(i + block_size, pixel_data.size()));
         
-        decryptor.decrypt_block(block);
+        decryptor.decrypt(block);
 
         std::copy(block.begin(), block.end(), pixel_data.begin() + i);
     }
