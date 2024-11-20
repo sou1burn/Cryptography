@@ -71,14 +71,6 @@ void BmpReader::encrypt_bmp(const std::string &input, const std::string &output,
 
     Block key_block;
 
-    size_t original_size = pixel_data.size();
-
-    if (pixel_data.size() % block_size != 0)
-    {
-        size_t padding = block_size - (pixel_data.size() % block_size);
-        pixel_data.insert(pixel_data.end(), padding, padding); 
-    }
-
     for (size_t i = 0; i < key.size(); ++i)
     {
         key_block.push_back(key[i]);
@@ -94,7 +86,6 @@ void BmpReader::encrypt_bmp(const std::string &input, const std::string &output,
 
     }
 
-    pixel_data.resize(original_size);
     rewrite_bmp(output, pixel_data);
 }
 
@@ -107,14 +98,6 @@ void BmpReader::decrypt_bmp(const std::string &input, const std::string &output,
 
     Block key_block;
 
-    if (!pixel_data.empty())
-    {
-        byte padding = pixel_data.back();
-        if (padding > 0 && padding <= block_size)
-        {
-            pixel_data.resize(pixel_data.size() - padding);
-        }
-    }   
 
     for (size_t i = 0; i < key.size(); ++i)
     {

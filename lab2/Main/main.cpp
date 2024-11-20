@@ -61,6 +61,32 @@ int main(int argc, char** argv)
     {
         BmpReader bmp_reader;
         Key key;
+        for (size_t i = 0; i < key.size(); ++i)
+        {
+            std::cout << "key[" << i << "]: " << static_cast<int>(key[i]);
+        }
+        std::cout << std::endl;
+        Block test_block = {0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF};
+
+        FEAL_crypt feal(32, key);
+        Block encrypted = test_block;
+        feal.encrypt_block(encrypted);
+
+        Block decrypted = encrypted;
+        feal.decrypt_block(decrypted);
+
+        if (test_block == decrypted)
+        {
+            std::cout << "Encryption and decryption are working correctly.\n";
+        }
+        else
+        {
+            for (size_t i = 0; i < test_block.size(); ++i)
+            {   
+                std::cout << "encrypted[" << i << "]: " << static_cast<int>(encrypted[i]) << " decrypted[" << i << "]: " << static_cast<int>(decrypted[i])  << " original[" << i << "]: " << static_cast<int>(test_block[i]) << "\n";
+            }
+            std::cout << "Error in encryption/decryption.\n";
+        }
         size_t block_size = 8; 
 
         
