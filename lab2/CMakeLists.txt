@@ -11,6 +11,12 @@ include_directories(Key)
 include_directories(FEAL)
 include_directories(BMP)
 
+set(TESTS_SOURCES
+    Tests/Tests.cpp    
+)
+
+#add_library(TESTS ${TESTS_SOURCES})
+
 set(KEY_SOURCES
     Key/Key.cpp
 )

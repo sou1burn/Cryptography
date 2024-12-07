@@ -1,7 +1,7 @@
 #include "FEAL.h"
 namespace lab2
 {
-
+//dop1
 Block FEAL_crypt::xor_blocks(Block& a, Block& b) {
 
     if (a.size() != b.size()) throw std::invalid_argument("Block sizes must match for XOR operation");
@@ -259,6 +259,65 @@ void FEAL_crypt::decrypt(Block& data)
         std::copy(block.begin(), block.end(), data.begin() + i); 
     }
 
+}
+
+void FEAL_crypt::encrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx) {
+    if (opentext.size() % iv.size() != 0) 
+        throw std::invalid_argument("Plaintext size must be a multiple of block size (8 bytes)");
+    if (iv.size() != 8) 
+        throw std::invalid_argument("IV size must match block size (8 bytes)");
+
+    Block prev_ciphertext = iv;
+
+    for (size_t i = 0; i < opentext.size(); i += iv.size()) {
+        Block block(opentext.begin() + i, opentext.begin() + i + iv.size());        
+
+        block = xor_blocks(block, prev_ciphertext);
+        encrypt_block(block);
+        std::copy(block.begin(), block.end(), opentext.begin() + i);
+
+        prev_ciphertext = block;
+    }
+}
+
+
+void FEAL_crypt::decrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx) {
+    if (opentext.size() % iv.size() != 0) 
+        throw std::invalid_argument("Plaintext size must be a multiple of block size (8 bytes)");
+    if (iv.size() != 8) 
+        throw std::invalid_argument("IV size must match block size (8 bytes)");
+
+    Block prev_ciphertext = iv;
+    for (size_t i = 0; i < opentext.size(); i += iv.size()) {
+        Block block(opentext.begin() + i, opentext.begin() + i + iv.size());
+    
+        Block encrypted_block = block; 
+        decrypt_block(block);          
+        block = xor_blocks(block, prev_ciphertext); 
+        std::copy(block.begin(), block.end(), opentext.begin() + i);
+
+        prev_ciphertext = encrypted_block; 
+    }
+}
+
+
+void FEAL_crypt::corrupt_byte(Block& block, size_t pixel_idx)
+{
+    if (pixel_idx >= block.size()) throw std::out_of_range("Pixel index is out of block bounds");
+
+    block[pixel_idx] = ~block[pixel_idx];
+}
+
+Block FEAL_crypt::generate_iv(const size_t size = 8)
+{
+    Block iv(size, 0);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        iv[i] = rand() % 256;
+    } 
+
+    return iv;
 }
 
 }

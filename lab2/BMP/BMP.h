@@ -70,6 +70,12 @@ public:
     void encrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size, Key &key);
 
     void decrypt_bmp(const std::string &input_file, const std::string &output_file, size_t block_size, Key &key);
+
+    void encrypt_bmp_cbc(const std::string &input, const std::string &output, size_t block_size, Key &key, Block& iv, size_t corrupt_byte_idx);
+
+    void decrypt_bmp_cbc(const std::string &input, const std::string &output, size_t block_size, Key &key, Block& iv, size_t corrupt_byte_idx);
+
+    void corrupt(const std::string& file);
 };
 
 

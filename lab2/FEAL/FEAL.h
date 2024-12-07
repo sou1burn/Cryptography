@@ -52,7 +52,14 @@ public:
     void encrypt(Block& data);
 
     void decrypt(Block& data);
+    
+    void encrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx = std::numeric_limits<size_t>::max());
 
+    void decrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx = std::numeric_limits<size_t>::max());
+
+    void corrupt_byte(Block& block, size_t pixel_idx);
+
+    Block generate_iv(const size_t size);
 };
 
 }

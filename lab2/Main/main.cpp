@@ -46,7 +46,7 @@ using namespace lab2;
 
 int main(int argc, char** argv)
 {
-    if (argc != 4) 
+    if (argc != 6) 
     {
         std::cerr << "Usage: " << argv[0] << " <input_bmp> <output_encrypted_bmp> <output_decrypted_bmp>\n";
         return 1;
@@ -56,16 +56,14 @@ int main(int argc, char** argv)
     std::string input_bmp = argv[1];
     std::string output_encrypted_bmp = argv[2];
     std::string output_decrypted_bmp = argv[3];
+    std::string output_encrypted_bmp_cbc = argv[4];
+    std::string output_decrypted_bmp_cbc = argv[5];
 
     try
     {
         BmpReader bmp_reader;
         Key key;
-        for (size_t i = 0; i < key.size(); ++i)
-        {
-            std::cout << "key[" << i << "]: " << static_cast<int>(key[i]);
-        }
-        std::cout << std::endl;
+
         Block test_block = {0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF};
 
         FEAL_crypt feal(32, key);
@@ -74,6 +72,7 @@ int main(int argc, char** argv)
 
         Block decrypted = encrypted;
         feal.decrypt_block(decrypted);
+
 
         if (test_block == decrypted)
         {
@@ -96,6 +95,15 @@ int main(int argc, char** argv)
         
         bmp_reader.decrypt_bmp(output_encrypted_bmp, output_decrypted_bmp, block_size, key);
         std::cout << "Decryption complete. Decrypted BMP saved to " << output_decrypted_bmp << std::endl;
+
+        FEAL_crypt cbc_coder(32, key);
+        Block iv = cbc_coder.generate_iv(8);
+
+        bmp_reader.encrypt_bmp_cbc(input_bmp, output_encrypted_bmp_cbc, block_size, key, iv, 2500);
+        std::cout << "Encryption complete. Encrypted BMP in CBC mode saved to " << output_encrypted_bmp_cbc << std::endl;
+
+        bmp_reader.decrypt_bmp_cbc(output_encrypted_bmp_cbc, output_decrypted_bmp_cbc, block_size, key, iv, 2000);
+        std::cout << "Decryption complete. Decrypted BMP in CBC mode saved to " << output_decrypted_bmp_cbc << std::endl;
     }
     catch (const std::exception& e)
     {
