@@ -1,6 +1,7 @@
 #include "BMP.h"
 #include "FEAL.h"
 using namespace lab2;
+#include "Tests.h"
 
 /*void test_feal_crypt() {
     // Define a simple key and plaintext for testing
@@ -43,12 +44,13 @@ using namespace lab2;
     std::cout << "Test passed successfully!" << std::endl;
 }
 */
-
+// ./main test.bmp out_en.bmp out_dec.bmp out_en_cbc.bmp out_dec_cbc.bmp
+//
 int main(int argc, char** argv)
 {
     if (argc != 6) 
     {
-        std::cerr << "Usage: " << argv[0] << " <input_bmp> <output_encrypted_bmp> <output_decrypted_bmp>\n";
+        std::cerr << "Usage: " << argv[0] << " <input_bmp> <output_encrypted_bmp> <output_decrypted_bmp> <output_encrypted_cbc_bmp output_decrypted_bmp_cbc>\n";
         return 1;
     }
 
@@ -73,6 +75,7 @@ int main(int argc, char** argv)
         Block decrypted = encrypted;
         feal.decrypt_block(decrypted);
 
+        Tests tests;
 
         if (test_block == decrypted)
         {
@@ -99,7 +102,7 @@ int main(int argc, char** argv)
         FEAL_crypt cbc_coder(32, key);
         Block iv = cbc_coder.generate_iv(8);
 
-        bmp_reader.encrypt_bmp_cbc(input_bmp, output_encrypted_bmp_cbc, block_size, key, iv, 2500);
+        bmp_reader.encrypt_bmp_cbc(input_bmp, output_encrypted_bmp_cbc, block_size, key, iv, 2500, tests);
         std::cout << "Encryption complete. Encrypted BMP in CBC mode saved to " << output_encrypted_bmp_cbc << std::endl;
 
         bmp_reader.decrypt_bmp_cbc(output_encrypted_bmp_cbc, output_decrypted_bmp_cbc, block_size, key, iv, 2000);

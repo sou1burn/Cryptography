@@ -1,6 +1,7 @@
 #pragma once
 #include "FEAL.h"
-
+#include <bitset>
+#include <map>
 
 namespace lab2
 {
@@ -18,7 +19,7 @@ public:
 
     double series_test(const Block block, size_t len);
 
-    void autocorrelation_test();
+    double autocorrelation_test(const Block block, int d);
 
 };
 }

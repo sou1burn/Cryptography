@@ -1,7 +1,7 @@
 #include "FEAL.h"
 namespace lab2
 {
-//dop1
+    
 Block FEAL_crypt::xor_blocks(Block& a, Block& b) {
 
     if (a.size() != b.size()) throw std::invalid_argument("Block sizes must match for XOR operation");
@@ -109,36 +109,6 @@ void FEAL_crypt::feal_round(Block& L, Block& R, Block& k)
 
 Block FEAL_crypt::generate_rkeys(Block key, int rounds)
 {
-    /*if (key.size() != 16) throw std::invalid_argument("Key must be 16 bytes");
-
-    Block subkeys;
-
-    Block L(key.begin(), key.begin() + 8);
-    Block R(key.begin() + 8, key.end());
-
-    for (size_t i = 0; i < (rounds + 8) / 2; ++i)
-    {
-        std::cout << "L size: " << L.size() << ", R size: " << R.size()<< " " << i << std::endl;
-        Block xor_res = xor_blocks(R, L);
-        std::cout << "Res size: " << xor_res.size() << std::endl;
-
-        Block tmp;
-        if (i > 0 && i != (rounds + 7) / 2)
-        {
-            tmp = Fk(L, xor_res); 
-        }
-        else
-        {
-            tmp = Fk(L, R);
-        }
-
-        subkeys.insert(subkeys.end(), tmp.begin(), tmp.end());
-
-        std::swap(L, R);
-    }
-    
-    return subkeys;
-    */
 
     if (key.size() != 16) throw std::invalid_argument("key must be 16 bytes long");
     
@@ -158,7 +128,6 @@ Block FEAL_crypt::generate_rkeys(Block key, int rounds)
 
     for (int i = 0; i < (rounds + 8) / 2; ++i)
     {
-        //std::cout << "L size: " << A0.size() << ", R size: " << B0.size()<< " " << i << std::endl;
         if (i % 3 == 1)
         {
             xored = xor_blocks(B0, Kr1);
@@ -214,7 +183,6 @@ void FEAL_crypt::decrypt_block(Block& block)
     for (int i = rounds_ - 1; i >= 0; --i)
     {
         Block k(subkeys_.begin() + (i * 4), subkeys_.begin() + (i * 4) + 4);
-        //Block k(subkeys_.end() - (i + 1) * 4, subkeys_.end() - i * 4);
 
         feal_round(L, R, k);
     }

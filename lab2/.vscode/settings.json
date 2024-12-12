@@ -49,6 +49,8 @@
         "ctime": "cpp",
         "complex": "cpp",
         "sstream": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "bitset": "cpp",
+        "map": "cpp"
     }
 }
