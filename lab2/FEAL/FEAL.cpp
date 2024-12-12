@@ -172,6 +172,39 @@ void FEAL_crypt::encrypt_block(Block& block)
     std::copy(L.begin(), L.end(), block.begin() + 4);
 }
 
+void FEAL_crypt::encrypt_block_dop(Block& block, std::vector<std::vector<int>>& bit_change_per_round)
+{
+    if (block.size() != 8) throw std::invalid_argument("Block must be 8 bytes");
+
+    Block L(block.begin(), block.begin() + 4);
+    Block R(block.begin() + 4, block.end());
+    
+    for (int i = 0; i < rounds_; ++i)
+    {
+        Block prev_l = L;
+        Block prev_r = R;
+
+        Block k(subkeys_.begin() + (i * 4), subkeys_.begin() + (i * 4) + 4);
+        feal_round(L, R, k);
+
+        std::vector<int> bit_changes_round;
+        for (size_t j = 0; j < L.size(); ++j)
+        {
+            int changes_in_L = std::bitset<8>(L[j] ^ prev_l[j]).count();
+            int changes_in_R = std::bitset<8>(R[j] ^ prev_r[j]).count();
+
+            bit_changes_round.push_back(changes_in_L);
+            bit_changes_round.push_back(changes_in_R);
+        }
+        
+        bit_change_per_round.push_back(bit_changes_round);
+    }
+
+    std::copy(R.begin(), R.end(), block.begin());
+
+    std::copy(L.begin(), L.end(), block.begin() + 4);
+}
+
 void FEAL_crypt::decrypt_block(Block& block)
 {
     if (block.size() != 8) throw std::invalid_argument("Block must be 8 bytes");
@@ -248,6 +281,24 @@ void FEAL_crypt::encrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx
     }
 }
 
+void FEAL_crypt::encrypt_cbc_dop(Block& opentext, Block& iv, std::vector<std::vector<int>>& bit_change_per_round) {
+    if (opentext.size() % iv.size() != 0) 
+        throw std::invalid_argument("Plaintext size must be a multiple of block size (8 bytes)");
+    if (iv.size() != 8) 
+        throw std::invalid_argument("IV size must match block size (8 bytes)");
+
+    Block prev_ciphertext = iv;
+
+    for (size_t i = 0; i < opentext.size(); i += iv.size()) {
+        Block block(opentext.begin() + i, opentext.begin() + i + iv.size());        
+
+        block = xor_blocks(block, prev_ciphertext);
+        encrypt_block_dop(block,bit_change_per_round);
+        std::copy(block.begin(), block.end(), opentext.begin() + i);
+
+        prev_ciphertext = block;
+    }
+}
 
 void FEAL_crypt::decrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx) {
     if (opentext.size() % iv.size() != 0) 

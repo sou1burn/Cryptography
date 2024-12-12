@@ -75,6 +75,8 @@ public:
     void encrypt_bmp_cbc(const std::string &input, const std::string &output, size_t block_size, Key &key, Block& iv, size_t corrupt_byte_idx, Tests tests);
 
     void decrypt_bmp_cbc(const std::string &input, const std::string &output, size_t block_size, Key &key, Block& iv, size_t corrupt_byte_idx);
+
+    void get_brightness(std::string& filename);
 };
 
 

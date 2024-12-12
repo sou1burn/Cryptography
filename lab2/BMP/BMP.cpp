@@ -64,9 +64,7 @@ void BmpReader::rewrite_bmp(const std::string& filename, std::vector<byte> data)
 
 void BmpReader::encrypt_bmp(const std::string &input, const std::string &output, size_t block_size, Key &key)
 {
-
     read_data(input);
-
     FEAL_crypt encrypter(32, key);
 
     Block key_block;
@@ -84,8 +82,8 @@ void BmpReader::encrypt_bmp(const std::string &input, const std::string &output,
 
         std::copy(block.begin(), block.end(), pixel_data.begin() + i);
 
-    }
 
+    }
     rewrite_bmp(output, pixel_data);
 }
 
@@ -119,8 +117,10 @@ void BmpReader::decrypt_bmp(const std::string &input, const std::string &output,
 
 void BmpReader::encrypt_bmp_cbc(const std::string &input, const std::string &output, size_t block_size, Key &key, Block& iv, size_t corrupt_byte_idx, Tests tests)
 {
-
     read_data(input);
+
+    std::string out1 = "brightness_before_encryption.csv";
+    get_brightness(out1);
 
     FEAL_crypt encrypter(32, key);
     
@@ -131,13 +131,17 @@ void BmpReader::encrypt_bmp_cbc(const std::string &input, const std::string &out
         key_block.push_back(key[i]);
     }
 
+    std::vector<std::vector<int>> bit_change;
+
     for (size_t i = 0; i < pixel_data.size(); i+=block_size)
     {
         Block block(pixel_data.begin() + i, pixel_data.begin() + std::min(i + block_size, pixel_data.size()));
-        
-        encrypter.encrypt_cbc(block, iv);
+        Block previous_block = block;
+
+        encrypter.encrypt_cbc_dop(block, iv, bit_change);
 
         std::copy(block.begin(), block.end(), pixel_data.begin() + i);
+        
         std::cout << "Block №: " << i / 8 << "\n";
         tests.frequency_test(block);
         tests.sequence_test(block);
@@ -147,6 +151,23 @@ void BmpReader::encrypt_bmp_cbc(const std::string &input, const std::string &out
         std::cout << std::endl;
 
     }
+
+    std::string out2 = "brightness_after_encryption.csv";
+    get_brightness(out2);
+
+    std::ofstream histogram("bit_change_hist.csv");
+    if (!histogram.is_open()) throw std::runtime_error("failed");
+
+    histogram << "block,bits\n";
+    for (size_t block_idx = 0; block_idx < bit_change.size(); ++block_idx)
+    {
+        for (size_t round_idx = 0; round_idx < bit_change[block_idx].size(); ++round_idx)
+        {
+            histogram << block_idx / 8 << "," << bit_change[block_idx][round_idx] << "\n";
+        }
+    }
+
+    histogram.close();
 
     if (corrupt_byte_idx < pixel_data.size()) 
     {
@@ -181,5 +202,48 @@ void BmpReader::decrypt_bmp_cbc(const std::string &input, const std::string &out
     }
     
     rewrite_bmp(output, pixel_data);
+}
+
+void BmpReader::get_brightness(std::string& filename)
+{
+    int width = info_header.width;
+    int height = info_header.height;
+
+    int row_padding = (4 - (width * 3) % 4 ) % 4;
+
+    std::map<int, int> brightness_hist;
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            int idx = (y * (width * 3 + row_padding)) + (x * 3);
+            byte blue = pixel_data[idx];
+            byte green = pixel_data[idx + 1];
+            byte red = pixel_data[idx + 2];
+
+            int brightness = static_cast<int>(0.2126 * red + 0.7152 * green + 0.0722 * blue);
+            brightness_hist[brightness]++; 
+        }
+    }
+
+    std::ofstream csv_file(filename);
+
+    if (!csv_file.is_open())
+    {
+        std::cerr << "Failed to create CSV file!" << std::endl;
+        return;
+    }
+
+    csv_file << "Brightness,Count\n";
+
+    for (const auto& [brightness, count] : brightness_hist)
+    {
+        csv_file << brightness << "," << count << "\n";
+    }
+
+    csv_file.close();
+
+    std::cout << "Brightness histogram exported to brightness_histogram.csv" << std::endl;
 }
 } 

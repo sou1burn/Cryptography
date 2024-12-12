@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdlib>
 #include <random>
+#include <bitset>
 namespace lab2
 {
 
@@ -45,6 +46,8 @@ public:
 
     void encrypt_block(Block& block);
 
+    void encrypt_block_dop(Block& block, std::vector<std::vector<int>>& bit_change_per_round);
+
     void decrypt_block(Block& block);
 
     FEAL_crypt(int rounds, Key& key);
@@ -54,6 +57,8 @@ public:
     void decrypt(Block& data);
     
     void encrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx = std::numeric_limits<size_t>::max());
+
+    void encrypt_cbc_dop(Block& opentext, Block& iv, std::vector<std::vector<int>>& bit_change_per_round);
 
     void decrypt_cbc(Block& opentext, Block& iv, size_t corrupt_byte_idx = std::numeric_limits<size_t>::max());
 
