@@ -1,20 +1,23 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <array>
 
 namespace md5 
 {
     using byte = uint8_t;
     using quad = uint32_t;
+    using octa = uint64_t;
 
-    const quad S[64] = { 
+    static const unsigned BLOCK_SIZE = 64;
+    static const std::array<quad, 64> S = { 
         7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
         5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
         4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
         6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
     };
     
-    const quad K[64] = {
+    static const std::array<quad, 64> K = {
         0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
         0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
         0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
@@ -34,16 +37,15 @@ namespace md5
 
         private:
             std::vector<byte> padding(const std::string &msg);
-            std::vector<byte> msgLengthAddition(const std::string &msg);
+            bool isBigEndian();
+            quad toLittleEndian32(quad n);
+            octa toLittleEndian64(octa n);
+            quad leftRotate32(quad n, std::size_t &rot);
             quad F(quad x, quad y, quad z);
             quad G(quad x, quad y, quad z);
             quad H(quad x, quad y, quad z);
             quad I(quad x, quad y, quad z);
-
-            // uint32_t m_ABuf = 0x67452301h;
-            // uint32_t m_BBuf = 0xEFCDAB89h;
-            // uint32_t m_CBuf = 0x98BADCFEh;
-            // uint32_t m_DBuf = 0x10325476h;
+            void processBlock(std::array<quad, 16> M, quad &A, quad &B, quad &C, quad &D);
     };
 };
 
