@@ -33,7 +33,7 @@ namespace md5
         return padded;
     }
 
-    quad MD5Hasher::leftRotate32(quad n, std::size_t &rot)
+    quad MD5Hasher::leftRotate32(quad n, quad &rot)
     {
         return (n << rot) | (n >> (32 - rot));
     }
@@ -45,22 +45,58 @@ namespace md5
         quad C = 0x98BADCFE;
         quad D = 0x10325476;
 
-        auto messageLength = static_cast<byte>(message, message.size());
+        quad messageLength =message.size();
         
         std::vector<byte> padded = padding(message);
-
-        padded[messageLength] = 1 << 7;
-        for (int i = 0; i < 8; i++) 
-            padded.push_back((messageLength >> (i * 8)) & 0xFF);
+        auto bitLength = messageLength * 8;
+        for (auto i = 0; i < 8; i++) 
+            padded.push_back(static_cast<byte>((bitLength >> (i * 8)) & 0xFF));;
         
+        for (size_t i = 0; i < padded.size(); i += BLOCK_SIZE) {
+            quad M[16];
+            memcpy(M, &padded[i], 16);
+            processBlock(M, A, B, C, D);
+        }
+
+        quad hashParts[] = { toLittleEndian32(A), toLittleEndian32(B), toLittleEndian32(C), toLittleEndian32(D) };
+        std::stringstream res;
+        for (auto &&part : hashParts) {
+            for (auto i = 0; i < 4; ++i) {
+                res << std::hex << std::setw(2) << std::setfill('0') << (part & 0xFF), part >>= 8;
+            }
+        }
+        return res.str();
     }
 
-    void MD5Hasher::processBlock(std::array<quad, 16> M, quad &A, quad &B, quad &C, quad &D)
+    void MD5Hasher::processBlock(quad M[16], quad &A, quad &B, quad &C, quad &D)
     {
         quad a = A, b = B, c = C, d = D;
 
-        
+        for (auto i = 0; i < 64; ++i) {
+            quad tempRes;
+            int g;
+            if (i < 16) {
+                tempRes = F(b, c, d); 
+                g = i;
+            } else if (i < 32) {
+                tempRes = G(b, c, d);
+                g = (5 * i + 1) % 16;
+            } else if (i < 48) {
+                tempRes = H(b, c, d);
+                g = (3 * i + 5) % 16;
+            } else {
+                tempRes = I(b, c, d);
+                g = (7 * i) % 16;
+            }
 
+            quad tmp = d;
+            d = c;
+            c = b;
+            b += leftRotate32(a + tempRes + K[i] + M[g], S[i]);
+            a = tmp;
+        }
+
+        A += a, B += b, C += c, D += d;
     }
 
 //  stolen
