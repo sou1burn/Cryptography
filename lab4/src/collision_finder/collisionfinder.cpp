@@ -6,7 +6,7 @@ CollisionFinder::CollisionFinder(int n) : m_stringCount(n) {};
 
 std::vector<std::string> CollisionFinder::generateStringHashes(int n)
 {
-    auto randomChar = []() ->char {
+    auto randomChar = []() -> char {
         const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
         const size_t maxIndex = (sizeof(charset) - 2);
         return charset[rand() % maxIndex];
