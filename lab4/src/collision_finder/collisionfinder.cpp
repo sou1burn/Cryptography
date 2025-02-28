@@ -1,6 +1,9 @@
 #include "collisionfinder.h"
 namespace md5
 {
+
+CollisionFinder::CollisionFinder(int n) : m_stringCount(n) {};
+
 std::vector<std::string> CollisionFinder::generateStringHashes(int n)
 {
     auto randomChar = []() ->char {
@@ -19,7 +22,6 @@ std::vector<std::string> CollisionFinder::generateStringHashes(int n)
         hashes.push_back(m_hasher.MD5(str));
     }
 
-    m_hashes = hashes;
     return hashes;
 }
 
@@ -47,9 +49,9 @@ std::vector<byte> CollisionFinder::sequenceMaker(std::vector<std::string> &hashe
     return sequence;
 }
 
-void CollisionFinder::collisionPower()
+void CollisionFinder::collisionPower(std::vector<std::string> &hashes, int bitCount)
 {
-    auto sequence = sequenceMaker(m_hashes, 8);
+    auto sequence = sequenceMaker(hashes, bitCount);
 
     for (auto i = 0; i < sequence.size(); ++i) {
         for (auto j = 1; j < sequence.size(); ++j) {
@@ -58,12 +60,33 @@ void CollisionFinder::collisionPower()
             }
         }
     }
+    m_collisionPowers.push_back(INT32_MAX);
 }
 
-void CollisionFinder::makeCsv()
+void CollisionFinder::makeCsv(std::vector<int> &powers)
 {
+    std::ofstream csvFile("experiment.csv");
 
+    if (!csvFile.is_open()) {
+        std::cerr << "Error while opening a file\n";
+        return;
+    }
+    auto bitCount = 8;
+    csvFile << "bitCount,Power";
+    for (auto &power : powers) {
+        if (power == INT32_MAX)
+            continue;
+        
+        csvFile << bitCount <<"," << power;
+    }
+    csvFile.close();
+    std::cout << "\nFile is ready\n";
 }
 
+void CollisionFinder::findCollision() 
+{
+    auto hashes = generateStringHashes(m_stringCount);
 
+    
+}
 }
