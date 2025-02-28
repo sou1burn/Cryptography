@@ -8,7 +8,7 @@ std::vector<std::string> CollisionFinder::generateStringHashes(int n)
 {
     auto randomChar = []() ->char {
         const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
-        const size_t maxIndex = (sizeof(charset) - 1);
+        const size_t maxIndex = (sizeof(charset) - 2);
         return charset[rand() % maxIndex];
     };
     std::vector<std::string> randomStrings;
@@ -53,8 +53,8 @@ void CollisionFinder::collisionPower(std::vector<std::string> &hashes, int bitCo
 {
     auto sequence = sequenceMaker(hashes, bitCount);
 
-    for (auto i = 0; i < sequence.size(); ++i) {
-        for (auto j = 1; j < sequence.size(); ++j) {
+    for (size_t i = 0; i < sequence.size(); ++i) {
+        for (size_t j = i + 1; j < sequence.size(); ++j) {
             if (sequence[i] == sequence[j]) {
                 m_collisionPowers.push_back(j - i);
             }
@@ -63,7 +63,7 @@ void CollisionFinder::collisionPower(std::vector<std::string> &hashes, int bitCo
     m_collisionPowers.push_back(INT32_MAX);
 }
 
-void CollisionFinder::makeCsv(std::vector<int> &powers)
+void CollisionFinder::makeCsv()
 {
     std::ofstream csvFile("experiment.csv");
 
@@ -72,21 +72,27 @@ void CollisionFinder::makeCsv(std::vector<int> &powers)
         return;
     }
     auto bitCount = 8;
-    csvFile << "bitCount,Power";
-    for (auto &power : powers) {
-        if (power == INT32_MAX)
+    csvFile << "bitCount,Power\n";
+    for (auto &power : m_collisionPowers) {
+        if (power == INT32_MAX) {
+            csvFile << bitCount << ",\n";
+            bitCount +=2;
             continue;
+        }
         
-        csvFile << bitCount <<"," << power;
+        csvFile << bitCount <<"," << power << "\n";
     }
     csvFile.close();
-    std::cout << "\nFile is ready\n";
 }
 
 void CollisionFinder::findCollision() 
 {
     auto hashes = generateStringHashes(m_stringCount);
 
-    
+    for (auto bitCount = 8; bitCount <= 16; bitCount += 2) {
+        collisionPower(hashes, bitCount);
+        makeCsv();
+    }
+    std::cout << "\nSuccess!\n";
 }
 }
