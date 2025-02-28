@@ -42,7 +42,7 @@ namespace md5
             bool isBigEndian();
             quad toLittleEndian32(quad n);
             octa toLittleEndian64(octa n);
-            quad leftRotate32(quad n, quad &rot);
+            quad leftRotate32(quad n, quad rot);
             quad F(quad x, quad y, quad z);
             quad G(quad x, quad y, quad z);
             quad H(quad x, quad y, quad z);

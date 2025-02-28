@@ -1,5 +1,5 @@
 #include "md5hash.h"
-
+//dop 2
 namespace md5 
 {
 
@@ -33,7 +33,7 @@ namespace md5
         return padded;
     }
 
-    quad MD5Hasher::leftRotate32(quad n, quad &rot)
+    quad MD5Hasher::leftRotate32(quad n, quad rot)
     {
         return (n << rot) | (n >> (32 - rot));
     }
@@ -45,7 +45,7 @@ namespace md5
         quad C = 0x98BADCFE;
         quad D = 0x10325476;
 
-        quad messageLength =message.size();
+        octa messageLength = message.size();
         
         std::vector<byte> padded = padding(message);
         auto bitLength = messageLength * 8;
@@ -54,7 +54,7 @@ namespace md5
         
         for (size_t i = 0; i < padded.size(); i += BLOCK_SIZE) {
             quad M[16];
-            memcpy(M, &padded[i], 16);
+            memcpy(M, &padded[i], 64);
             processBlock(M, A, B, C, D);
         }
 
@@ -73,26 +73,25 @@ namespace md5
         quad a = A, b = B, c = C, d = D;
 
         for (auto i = 0; i < 64; ++i) {
-            quad tempRes;
+            quad valF;
             int g;
             if (i < 16) {
-                tempRes = F(b, c, d); 
+                valF = F(b, c, d); 
                 g = i;
             } else if (i < 32) {
-                tempRes = G(b, c, d);
+                valF = G(b, c, d);
                 g = (5 * i + 1) % 16;
             } else if (i < 48) {
-                tempRes = H(b, c, d);
+                valF = H(b, c, d);
                 g = (3 * i + 5) % 16;
             } else {
-                tempRes = I(b, c, d);
+                valF = I(b, c, d);
                 g = (7 * i) % 16;
             }
-
             quad tmp = d;
             d = c;
             c = b;
-            b += leftRotate32(a + tempRes + K[i] + M[g], S[i]);
+            b += leftRotate32(a + valF + K[i] + toLittleEndian32(M[g]), S[i]);
             a = tmp;
         }
 
@@ -112,7 +111,7 @@ namespace md5
 
     quad MD5Hasher::toLittleEndian32(quad n)
     {
-        if (!isBigEndian())
+        if (isBigEndian())
             return ((n << 24) & 0xFF000000) | ((n << 8) & 0x00FF0000) | ((n >> 8) & 0x0000FF00) | ((n >> 24) & 0x000000FF);
         
         return n;
