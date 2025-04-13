@@ -1,6 +1,6 @@
 #include "collisionfinder.h"
 
-int main(int argc, char **argv)
+int main()
 {
     md5::MD5Hasher hasher;
     std::string input;

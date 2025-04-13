@@ -22,7 +22,16 @@ set(COLLISION_FINDER_SOURCES src/collision_finder/collisionfinder.cpp)
 add_library(COLLISION_FINDER ${COLLISION_FINDER_SOURCES})
 target_include_directories(COLLISION_FINDER PUBLIC COLLISION_FINDER MD5)
 
+include_directories(src/dsa)
+
+set(DSA_SOURCES src/dsa/dsasystem.cpp)
+
+add_library(DSA ${DSA_SOURCES})
+target_include_directories(DSA PUBLIC DSA MD5)
+
 target_link_libraries(COLLISION_FINDER PUBLIC MD5)
+target_link_libraries(DSA PUBLIC MD5)
+
 add_executable(main src/main.cpp)
 
-target_link_libraries(main PUBLIC MD5 COLLISION_FINDER)
+target_link_libraries(main PUBLIC MD5 COLLISION_FINDER DSA)
