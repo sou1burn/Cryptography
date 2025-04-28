@@ -48,23 +48,26 @@ struct DigitalSignatureValidateScheme
 class DSACryptosystem
 {
 public:
-    explicit DSACryptosystem(const int &keyLength, const std::string &password, bool generateByPassword = false)
-        : m_keyLength(keyLength), m_password(password),
-          m_formScheme(new DigitalSignatureFormScheme(m_password)),
+    explicit DSACryptosystem(const int &keyLength, const std::string &password,const std::string &message, bool generateByPassword = false)
+        : m_keyLength(keyLength), m_password(password), m_message(m_hasher.MD5(message)),
+          m_formScheme(new DigitalSignatureFormScheme(m_message)),
           m_validateScheme(new DigitalSignatureValidateScheme(m_formScheme->m_q, m_formScheme->m_p, 1024, m_formScheme->m_g, m_formScheme->m_hash)) {};
 
     ~DSACryptosystem() = default;
     bool validateSignature() const;
+    const std::pair<int1024, int1024> &signature() const;
 
 private:
     // struct Pimpl;
     // std::unique_ptr<Pimpl> m_d;
-    DigitalSignatureFormScheme *m_formScheme {nullptr};
-    DigitalSignatureValidateScheme *m_validateScheme {nullptr};
 
     int m_keyLength {0};
-    const std::string m_password {""};
+    const std::string m_password {};
+    const std::string m_message {};
     md5::MD5Hasher m_hasher;
+
+    DigitalSignatureFormScheme *m_formScheme {};
+    DigitalSignatureValidateScheme *m_validateScheme {};
 };
 
 }
