@@ -10,7 +10,7 @@ using int256 = boost::multiprecision::uint256_t ;
 
 struct DigitalSignatureFormScheme
 {
-    explicit DigitalSignatureFormScheme(const std::string &hash) : m_hash(hash) {};
+    explicit DigitalSignatureFormScheme(const std::string &hash);
     int256 m_q;
     int1024 m_p;
     int1024 m_g;
@@ -20,26 +20,32 @@ struct DigitalSignatureFormScheme
     void findG();
 };
 
-
 struct DigitalSignatureValidateScheme
 {
-    explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &lenHash)
-        : m_q(q), m_p(p), m_lenHash(lenHash) {};
-    const int &m_lenHash;
+    explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g);
+    int1024 m_g;
     int256 m_q;
     int1024 m_p;
     int1024 m_k;
     int1024 m_r;
     int1024 m_s;
-    int1024 chooseK(const int256 &q);
+    int1024 m_secretKey;
+    const int m_hashLength {0};
+    std::pair<int1024, int1024> m_signature {m_r, m_s};
+    int1024 chooseK(const int256 &q) const;
+
     int1024 calculateR();
+    int256 calculateSecretKey() const;
+    void formPair();
 };
 
 class DSACryptosystem
 {
 public:
     explicit DSACryptosystem(const int &keyLength, const std::string &password, bool generateByPassword = true)
-        : m_keyLength(keyLength), m_password(password) {};
+        : m_keyLength(keyLength), m_password(password),
+          m_formScheme(new DigitalSignatureFormScheme(m_password)),
+          m_validateScheme(new DigitalSignatureValidateScheme(m_formScheme->m_q, m_formScheme->m_p, 1024, m_formScheme->m_g)) {};
 
     ~DSACryptosystem() = default;
     void makeSignature();
@@ -48,8 +54,8 @@ public:
 private:
     // struct Pimpl;
     // std::unique_ptr<Pimpl> m_d;
-    DigitalSignatureFormScheme *m_formScheme{nullptr};
-    DigitalSignatureValidateScheme *m_validateScheme{nullptr};
+    DigitalSignatureFormScheme *m_formScheme {nullptr};
+    DigitalSignatureValidateScheme *m_validateScheme {nullptr};
     std::vector<md5::byte> m_openKey;
     std::vector<md5::byte> m_secretKey;
 
