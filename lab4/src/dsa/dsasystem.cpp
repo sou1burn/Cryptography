@@ -1,45 +1,88 @@
 #include "dsasystem.h"
 
 namespace helpers {
-    bool testFermat(const dsa::int256 &q, const int iterations = 20)
-    {
-        if (q < 4 || q % 2 == 0)
+bool testFermat(const dsa::int256 &q, const int iterations = 20)
+{
+    if (q < 4 || q % 2 == 0)
+        return false;
+
+    boost::random::mt19937 gen(std::random_device{}());
+    const boost::random::uniform_int_distribution<dsa::int256> dist(2, q - 2);
+
+    for (auto i = 0; i < iterations; i++) {
+        const auto a = dist(gen);
+        if (boost::multiprecision::powm(a, q - 1, q) != 1)
             return false;
-
-        boost::random::mt19937 gen(std::random_device{}());
-        const boost::random::uniform_int_distribution<dsa::int256> dist(2, q - 2);
-
-        for (auto i = 0; i < iterations; i++) {
-            const auto a = dist(gen);
-            if (boost::multiprecision::powm(a, q - 1, q) != 1)
-                return false;
-        }
-
-        return true;
     }
 
-    bool testFermat(const dsa::int1024 &p, const int iterations = 20)
-    {
-        if (p < 4 || p % 2 == 0)
+    return true;
+}
+
+bool testFermat(const dsa::int1024 &p, const int iterations = 20)
+{
+    if (p < 4 || p % 2 == 0)
+        return false;
+
+    boost::random::mt19937 gen(std::random_device{}());
+    const boost::random::uniform_int_distribution<dsa::int1024> dist(2, p - 2);
+
+    for (auto i = 0; i < iterations; i++) {
+        const auto a = dist(gen);
+        if (boost::multiprecision::powm(a, p - 1, p) != 1)
             return false;
+    }
 
-        boost::random::mt19937 gen(std::random_device{}());
-        const boost::random::uniform_int_distribution<dsa::int1024> dist(2, p - 2);
+    return true;
+}
 
-        for (auto i = 0; i < iterations; i++) {
-            const auto a = dist(gen);
-            if (boost::multiprecision::powm(a, p - 1, p) != 1)
-                return false;
+int bitLength(const dsa::int1024 &n)
+{
+    return msb(n) + 1;
+}
+
+dsa::cpp_int modExp(dsa::cpp_int base, dsa::cpp_int exp, const dsa::cpp_int& mod)
+{
+    dsa::cpp_int result = 1;
+    base %= mod;
+    while (exp > 0) {
+        if (exp & 1) {
+            result = (result * base) % mod;
         }
-
-        return true;
+        base = (base * base) % mod;
+        exp >>= 1;
     }
+    return result;
+}
 
-    int bitLength(const dsa::int1024 &n)
-    {
-        return msb(n) + 1;
+dsa::cpp_int gcdExtended(const dsa::cpp_int& a, const dsa::cpp_int& b, dsa::cpp_int& x, dsa::cpp_int& y)
+{
+    if (a == 0) {
+        x = 0;
+        y = 1;
+        return b;
     }
+    dsa::cpp_int x1, y1;
+    dsa::cpp_int g = gcdExtended(b % a, a, x1, y1);
+    x = y1 - (b / a) * x1;
+    y = x1;
+    return g;
+}
 
+dsa::cpp_int modInverse(const dsa::cpp_int& a, const dsa::cpp_int& m)
+{
+    dsa::cpp_int x, y;
+    dsa::cpp_int g = gcdExtended(a, m, x, y);
+    if (g != 1) {
+        throw std::runtime_error("modInverse: обратный элемент не существует");
+    }
+    return (x % m + m) % m;
+}
+
+dsa::int256 hexStringToInt256(const std::string& hexStr)
+{
+    dsa::int256 result("0x" + hexStr);
+    return result;
+}
 
 } // namespace helpers
 
@@ -57,15 +100,19 @@ namespace dsa {
         findP();
         findG();
     }
-    DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g)
-        : m_q(q), m_p(p), m_hashLength(L), m_g(g) {
+
+    DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash)
+        : m_q(q), m_p(p), m_hashLength(L), m_g(g), m_hashString(hash)
+    {
         if (m_hashLength < 0 || m_hashLength > 1024)
             throw std::runtime_error("Invalid hash length");
-        boost::random::mt19937 gen(std::random_device{}());
-        boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-        m_secretKey = dist(gen);
-        m_k = chooseK(m_q);
+
+        m_hash = helpers::hexStringToInt256(m_hashString);
+        m_k = chooseK();
         m_r = calculateR();
+        m_secretKey = calculateSecretKey();
+        generatePublicKey();
+        formPair();
     }
 
     void DigitalSignatureFormScheme::generateQ()
@@ -92,7 +139,7 @@ namespace dsa {
         const auto L = 1024;
         const auto &q = this->m_q;
         int1024 k = 2;
-
+        bool found = false;
         while (true) {
            int1024 p = k * q + 1;
 
@@ -100,11 +147,13 @@ namespace dsa {
 
             if (helpers::bitLength(p) == L && helpers::testFermat(p)) {
                 this->m_p = p;
+                found = true;
                 break;
             }
             ++k;
         }
-        throw std::runtime_error("Failed to find p with given L = 1024 and q");
+        if (!found)
+            throw std::runtime_error("Failed to find p with given L = 1024 and q");
     }
 
     void DigitalSignatureFormScheme::findG()
@@ -129,63 +178,54 @@ namespace dsa {
         }
     }
 
-    inline int1024 DigitalSignatureValidateScheme::chooseK(const int256 &q) const {
+    inline int1024 DigitalSignatureValidateScheme::chooseK()
+    {
         boost::mt19937 gen(std::random_device{}());
         boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
+        m_k = static_cast<int1024>(dist(gen));
         return dist(gen);
     }
 
     inline int1024 DigitalSignatureValidateScheme::calculateR()
     {
-        const auto r = boost::multiprecision::powm(m_g, m_k, m_p) % m_q;
-        m_r = r;
-        return r;
+        m_r = boost::multiprecision::powm(m_g, m_k, m_p) % m_q;
+        return m_r;
     }
 
-    inline int256 DigitalSignatureValidateScheme::calculateSecretKey() const
+    inline int1024 DigitalSignatureValidateScheme::calculateSecretKey()
     {
-        const auto s = (boost::multiprecision::pow(m_k, -1) * m_hashLength +) % m_q;
+        int1024 s;
+        do {
+            m_k = chooseK();
+            calculateR();
+            const auto kInverse = helpers::modInverse(m_k, m_q);
+            s = static_cast<int1024>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
+        } while (s == 0);
+        m_s = s;
+        return s;
     }
 
+    inline void DigitalSignatureValidateScheme::formPair()
+    {
+        m_signature = std::make_pair(m_r, m_s);
+    }
+
+    inline void DigitalSignatureValidateScheme::generatePublicKey()
+    {
+        m_publicKey = boost::multiprecision::powm(m_g, m_secretKey, m_p);
+    }
+
+    bool DSACryptosystem::validateSignature() const
+    {
+        if (m_validateScheme->m_r <= 0 || m_validateScheme->m_r >= m_validateScheme->m_q || m_validateScheme->m_s <= 0 || m_validateScheme->m_s >=m_validateScheme->m_q)
+            return false;
+
+        const auto w = static_cast<int1024>(helpers::modInverse(m_validateScheme->m_s, m_validateScheme->m_q));
+        const auto u1 = (m_validateScheme->m_hash * w) % m_validateScheme->m_q;
+        const auto u2 = (m_validateScheme->m_r * w) % m_validateScheme->m_q;
+        const auto v = (boost::multiprecision::powm(m_validateScheme->m_g, u1, m_validateScheme->m_p) *
+                      boost::multiprecision::powm(m_validateScheme->m_publicKey, u2, m_validateScheme->m_p)) % m_validateScheme->m_p % m_validateScheme->m_q;
+        return v == m_validateScheme->m_r;
+    }
 
 }   // namespace dsa
-
-namespace helpers {
-template <typename T>
-T modExp(T base, T exp, const T& mod) {
-    T result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-template <typename T>
-T gcdExtended(const T& a, const T& b, T& x, T& y) {
-    if (a == 0) {
-        x = 0;
-        y = 1;
-        return b;
-    }
-    T x1, y1;
-    T g = gcdExtended(b % a, a, x1, y1);
-    x = y1 - (b / a) * x1;
-    y = x1;
-    return g;
-}
-
-template <typename T>
-T modInverse(const T& a, const T& m) {
-    T x, y;
-    T g = gcdExtended(a, m, x, y);
-    if (g != 1) {
-        throw std::runtime_error("modInverse: обратный элемент не существует");
-    }
-    return (x % m + m) % m;
-}
-}
