@@ -9,8 +9,8 @@ bool testFermat(const dsa::int256 &q, const int iterations = 5)
     boost::random::mt19937 gen(std::random_device{}());
     const boost::random::uniform_int_distribution<dsa::int256> dist(2, q - 2);
 
-    const auto a = dist(gen);
     for (auto i = 0; i < iterations; i++) {
+        const auto a = dist(gen);
         if (boost::multiprecision::powm(a, q - 1, q) != 1)
             return false;
     }
@@ -26,8 +26,8 @@ bool testFermat(const dsa::int1024 &p, const int iterations = 5)
     boost::random::mt19937 gen(std::random_device{}());
     const boost::random::uniform_int_distribution<dsa::int1024> dist(2, p - 2);
 
-    const auto a = dist(gen);
     for (auto i = 0; i < iterations; i++) {
+        const auto a = dist(gen);
         if (boost::multiprecision::powm(a, p - 1, p) != 1)
             return false;
     }
@@ -35,9 +35,9 @@ bool testFermat(const dsa::int1024 &p, const int iterations = 5)
     return true;
 }
 
-int bitLength(const dsa::int1024 &n)
+inline int bitLength(const dsa::int1024 &n)
 {
-    return msb(n) + 1;
+    return boost::multiprecision::msb(n) + 1;
 }
 
 dsa::cpp_int modExp(dsa::cpp_int base, dsa::cpp_int exp, const dsa::cpp_int& mod)
@@ -88,11 +88,15 @@ dsa::int256 hexStringToInt256(const std::string& hexStr)
 
 namespace dsa {
 
-// struct DSACryptosystem::Pimpl {
-//     explicit Pimpl(const int &keyLength, const std::string &password, bool generateByPassword = true) {};
-//     ~Pimpl() {};
-//
-// };
+DSACryptosystem::DSACryptosystem(const int &keyLength, const std::string &password,const std::string &message, const bool &generateByPassword /*= false*/)
+{
+    m_keyLength = keyLength;
+    m_password = password;
+    m_message = message;
+    m_formScheme = new DigitalSignatureFormScheme(m_hasher.MD5(message));
+    m_validateScheme = new DigitalSignatureValidateScheme(m_formScheme->m_q, m_formScheme->m_p, 1024, m_formScheme->m_g, m_formScheme->m_hash, generateByPassword, m_hasher.MD5(password));
+}
+
 DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
     : m_hash(hash)
 {
@@ -101,13 +105,11 @@ DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
     findG();
 }
 
-DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash)
+DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, std::string password)
     : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash)
 {
     m_hash = helpers::hexStringToInt256(m_hashString);
-    m_k = chooseK();
-    m_r = calculateR();
-    m_secretKey = calculateSecretKey();
+    m_secretKey = calculateSecretKey(byPassword, password);
     generatePublicKey();
     formPair();
 }
@@ -195,8 +197,27 @@ inline int1024 DigitalSignatureValidateScheme::calculateR()
     return m_r;
 }
 
-inline int1024 DigitalSignatureValidateScheme::calculateSecretKey()
+int1024 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, std::string password)
 {
+    if (byPassword) {
+        const int256 passwordHash = helpers::hexStringToInt256(password);
+        int1024 secretKey = static_cast<int1024>(passwordHash % m_q);
+        if (secretKey == 0)
+            secretKey = 1;
+        m_secretKey = secretKey;
+
+        int1024 s;
+        do {
+            m_k = chooseK();
+            calculateR();
+            const auto kInverse = helpers::modInverse(m_k, m_q);
+            s = static_cast<int1024>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
+        } while (s == 0);
+
+        m_s = s;
+        return s;
+    }
+
     int1024 s;
     do {
         m_k = chooseK();
@@ -204,6 +225,7 @@ inline int1024 DigitalSignatureValidateScheme::calculateSecretKey()
         const auto kInverse = helpers::modInverse(m_k, m_q);
         s = static_cast<int1024>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
     } while (s == 0);
+
     m_s = s;
     return s;
 }
