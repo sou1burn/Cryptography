@@ -24,6 +24,8 @@ struct DigitalSignatureFormScheme
 struct DigitalSignatureValidateScheme
 {
     explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash);
+    const int m_hashLength = 256;
+    int m_keySize = 1024;
     int1024 m_g;
     int256 m_q;
     int1024 m_p;
@@ -32,7 +34,6 @@ struct DigitalSignatureValidateScheme
     int1024 m_s;
     int1024 m_secretKey;
     int1024 m_publicKey;
-    const int m_hashLength {0};
     int256 m_hash;
     const std::string m_hashString;
     std::pair<int1024, int1024> m_signature {};
@@ -49,8 +50,10 @@ class DSACryptosystem
 {
 public:
     explicit DSACryptosystem(const int &keyLength, const std::string &password,const std::string &message, bool generateByPassword = false)
-        : m_keyLength(keyLength), m_password(password), m_message(m_hasher.MD5(message)),
-          m_formScheme(new DigitalSignatureFormScheme(m_message)),
+        : m_keyLength(keyLength),
+          m_password(password),
+          m_message(message),
+          m_formScheme(new DigitalSignatureFormScheme(m_hasher.MD5(message))),
           m_validateScheme(new DigitalSignatureValidateScheme(m_formScheme->m_q, m_formScheme->m_p, 1024, m_formScheme->m_g, m_formScheme->m_hash)) {};
 
     ~DSACryptosystem() = default;

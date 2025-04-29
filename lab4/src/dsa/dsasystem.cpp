@@ -102,11 +102,8 @@ DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
 }
 
 DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash)
-    : m_q(q), m_p(p), m_hashLength(L), m_g(g), m_hashString(hash)
+    : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash)
 {
-    if (m_hashLength < 0 || m_hashLength > 1024)
-        throw std::runtime_error("Invalid hash length");
-
     m_hash = helpers::hexStringToInt256(m_hashString);
     m_k = chooseK();
     m_r = calculateR();
@@ -117,9 +114,9 @@ DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, 
 
 void DigitalSignatureFormScheme::generateQ()
 {
-    const auto N = static_cast<int>(m_hash.size() * 8);
+    constexpr auto N = 256;
     boost::random::mt19937 gen(std::random_device{}());
-    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> randBits(gen);
+    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> randBits(std::random_device{}());
 
     int256 q;
     do {
@@ -132,29 +129,24 @@ void DigitalSignatureFormScheme::generateQ()
     this->m_q = q;
 }
 
-    void DigitalSignatureFormScheme::findP()
-{
+void DigitalSignatureFormScheme::findP() {
     if (!m_q)
         throw std::runtime_error("Q is not generated");
 
-    const auto L = 1024;
-    const auto &q = this->m_q;
+    constexpr auto L = 1024;
 
-    const int MAX_ATTEMPTS = 10000;
-    bool found = false;
+    auto found = false;
 
     boost::random::mt19937 gen(std::random_device{}());
-    boost::random::uniform_int_distribution<int1024> dist(1, (1 << (L - 1)) - 1);  // Диапазон для k
+    boost::random::uniform_int_distribution<dsa::int1024> dist(1, (dsa::int1024(1) << (L - helpers::bitLength(m_q))) - 1);
+    while (true) {
+        dsa::int1024 k = dist(gen);
+        if (k < 2) continue;
 
-    for (int attempt = 0; attempt < MAX_ATTEMPTS; ++attempt) {
+        int1024 p = k * m_q + 1;
 
-        int1024 k = dist(gen);
-
-        int1024 p = k * q + 1;
-
-        if ((p - 1) % q != 0) {
+        if (helpers::bitLength(p) != L)
             continue;
-        }
 
         if (helpers::testFermat(p)) {
             this->m_p = p;
@@ -164,7 +156,7 @@ void DigitalSignatureFormScheme::generateQ()
     }
 
     if (!found)
-        throw std::runtime_error("Failed to find p with given L = 1024 and q after max attempts");
+        throw std::runtime_error("Failed to find p with given L = 1024 and q");
 }
 
 void DigitalSignatureFormScheme::findG()
@@ -194,7 +186,7 @@ inline int1024 DigitalSignatureValidateScheme::chooseK()
     boost::mt19937 gen(std::random_device{}());
     boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
     m_k = static_cast<int1024>(dist(gen));
-    return dist(gen);
+    return m_k;
 }
 
 inline int1024 DigitalSignatureValidateScheme::calculateR()
