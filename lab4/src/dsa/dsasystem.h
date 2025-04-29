@@ -5,8 +5,8 @@
 #include "md5hash.h"
 
 namespace dsa {
-using int1024 = boost::multiprecision::uint1024_t ;
-using int256 = boost::multiprecision::uint256_t ;
+using int1024 = boost::multiprecision::uint1024_t;
+using int256 = boost::multiprecision::uint256_t;
 using cpp_int = boost::multiprecision::cpp_int;
 
 struct DigitalSignatureFormScheme
@@ -23,24 +23,25 @@ struct DigitalSignatureFormScheme
 
 struct DigitalSignatureValidateScheme
 {
-    explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, std::string password);
+    explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password);
     const int m_hashLength = 256;
     int m_keySize = 1024;
     int1024 m_g;
     int256 m_q;
     int1024 m_p;
-    int1024 m_k;
-    int1024 m_r;
-    int1024 m_s;
-    int1024 m_secretKey;
+    int256 m_k;
+    int256 m_r;
+    int256 m_s;
+
+    int256 m_secretKey;
     int1024 m_publicKey;
     int256 m_hash;
     const std::string m_hashString;
-    std::pair<int1024, int1024> m_signature {};
+    std::pair<int256, int256> m_signature {};
 
-    int1024 chooseK();
-    int1024 calculateR();
-    int1024 calculateSecretKey(const bool &byPassword, std::string password);
+    int256 chooseK();
+    int256 calculateR();
+    int256 calculateSecretKey(const bool &byPassword, const std::string &password);
 
     void generatePublicKey();
     void formPair();
@@ -52,7 +53,7 @@ public:
     explicit DSACryptosystem(const int &keyLength, const std::string &password, const std::string &message, const bool &generateByPassword = false);
     ~DSACryptosystem() = default;
     bool validateSignature() const;
-    const std::pair<int1024, int1024> &signature() const;
+    const std::pair<int256, int256> &signature() const;
 
 private:
     // struct Pimpl;

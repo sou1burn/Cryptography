@@ -1,5 +1,8 @@
 #include "dsasystem.h"
 
+static constexpr auto N = 256;
+static constexpr auto L = 1024;
+
 namespace helpers {
 bool testFermat(const dsa::int256 &q, const int iterations = 5)
 {
@@ -105,7 +108,7 @@ DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
     findG();
 }
 
-DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, std::string password)
+DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password)
     : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash)
 {
     m_hash = helpers::hexStringToInt256(m_hashString);
@@ -116,9 +119,8 @@ DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, 
 
 void DigitalSignatureFormScheme::generateQ()
 {
-    constexpr auto N = 256;
     boost::random::mt19937 gen(std::random_device{}());
-    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> randBits(std::random_device{}());
+    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> randBits(gen);
 
     int256 q;
     do {
@@ -134,8 +136,6 @@ void DigitalSignatureFormScheme::generateQ()
 void DigitalSignatureFormScheme::findP() {
     if (!m_q)
         throw std::runtime_error("Q is not generated");
-
-    constexpr auto L = 1024;
 
     auto found = false;
 
@@ -183,47 +183,48 @@ void DigitalSignatureFormScheme::findG()
     }
 }
 
-inline int1024 DigitalSignatureValidateScheme::chooseK()
+inline int256 DigitalSignatureValidateScheme::chooseK()
 {
     boost::mt19937 gen(std::random_device{}());
-    boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-    m_k = static_cast<int1024>(dist(gen));
+    const boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
+    m_k = (dist(gen));
     return m_k;
 }
 
-inline int1024 DigitalSignatureValidateScheme::calculateR()
+inline int256 DigitalSignatureValidateScheme::calculateR()
 {
-    m_r = boost::multiprecision::powm(m_g, m_k, m_p) % m_q;
+    const auto tmp = boost::multiprecision::powm(m_g, static_cast<int1024>(m_k), m_p) % m_q;
+    m_r = tmp.convert_to<int256>();
     return m_r;
 }
 
-int1024 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, std::string password)
+int256 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, const std::string &password)
 {
     if (byPassword) {
         const int256 passwordHash = helpers::hexStringToInt256(password);
-        int1024 secretKey = static_cast<int1024>(passwordHash % m_q);
+        int256 secretKey = (passwordHash % m_q);
         if (secretKey == 0)
             secretKey = 1;
         m_secretKey = secretKey;
 
-        int1024 s;
+        int256 s;
         do {
             m_k = chooseK();
             calculateR();
             const auto kInverse = helpers::modInverse(m_k, m_q);
-            s = static_cast<int1024>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
+            s = static_cast<int256>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
         } while (s == 0);
 
         m_s = s;
         return s;
     }
 
-    int1024 s;
+    int256 s;
     do {
         m_k = chooseK();
         calculateR();
         const auto kInverse = helpers::modInverse(m_k, m_q);
-        s = static_cast<int1024>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
+        s = static_cast<int256>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
     } while (s == 0);
 
     m_s = s;
@@ -237,7 +238,7 @@ inline void DigitalSignatureValidateScheme::formPair()
 
 inline void DigitalSignatureValidateScheme::generatePublicKey()
 {
-    m_publicKey = boost::multiprecision::powm(m_g, m_secretKey, m_p);
+    m_publicKey = boost::multiprecision::powm(m_g, static_cast<int1024>(m_secretKey), m_p);
 }
 
 bool DSACryptosystem::validateSignature() const
@@ -248,12 +249,12 @@ bool DSACryptosystem::validateSignature() const
     const auto w = static_cast<int1024>(helpers::modInverse(m_validateScheme->m_s, m_validateScheme->m_q));
     const auto u1 = (m_validateScheme->m_hash * w) % m_validateScheme->m_q;
     const auto u2 = (m_validateScheme->m_r * w) % m_validateScheme->m_q;
-    const auto v = (boost::multiprecision::powm(m_validateScheme->m_g, u1, m_validateScheme->m_p) *
-                  boost::multiprecision::powm(m_validateScheme->m_publicKey, u2, m_validateScheme->m_p)) % m_validateScheme->m_p % m_validateScheme->m_q;
+    const auto v = ((boost::multiprecision::powm(m_validateScheme->m_g, u1, m_validateScheme->m_p) *
+                  boost::multiprecision::powm(m_validateScheme->m_publicKey, u2, m_validateScheme->m_p)) % m_validateScheme->m_p) % m_validateScheme->m_q;
     return v == m_validateScheme->m_r;
 }
 
-const std::pair<int1024, int1024> &DSACryptosystem::signature() const
+const std::pair<int256, int256> &DSACryptosystem::signature() const
 {
     return m_validateScheme->m_signature;
 }

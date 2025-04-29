@@ -46,8 +46,7 @@ int main()
     std::cout << "Generated DSA keys:\n";
     std::cout << "Signature: " << dsa.signature().first << " " << dsa.signature().second << "\n";
 
-    bool isValid = dsa.validateSignature();
-    if (isValid)
+    if (dsa.validateSignature())
         std::cout << "Signature validated successfully \n";
     else
         std::cout << "Signature validation failed \n";
