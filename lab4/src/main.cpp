@@ -10,14 +10,14 @@ int main()
     std::cin >> input;
     const auto hash = hasher.MD5(input);
     std::cout << "MD5 hash: " << hash << "\n";
-    //
-    // int N;
-    // std::cout << "Enter number N of strings: \n";
-    // std::cin >> N;
-    //
-    // md5::CollisionFinder finder(N);
-    //
-    // finder.findCollision();
+
+    int N;
+    std::cout << "Enter number N of strings: \n";
+    std::cin >> N;
+
+    md5::CollisionFinder finder(N);
+
+    finder.findCollision();
 
     std::string keyLength;
     auto byPassword = false;
@@ -44,7 +44,9 @@ int main()
 
     const dsa::DSACryptosystem dsa(std::stoi(keyLength), password, msg, byPassword);
     std::cout << "Generated DSA keys:\n";
-    std::cout << "Signature: " << dsa.signature().first << " " << dsa.signature().second << "\n";
+    std::cout << "Public key: " << dsa.keys().second << " \nPrivate key: " << dsa.keys().first << "\n";
+
+    std::cout << "Signature: r = " << dsa.signature().first << " \n s = " << dsa.signature().second << "\n";
 
     if (dsa.validateSignature())
         std::cout << "Signature validated successfully \n";

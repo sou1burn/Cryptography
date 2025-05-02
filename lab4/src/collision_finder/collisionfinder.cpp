@@ -1,16 +1,16 @@
 #include "collisionfinder.h"
 namespace md5
 {
+CollisionFinder::CollisionFinder(const int &n) : m_stringCount(n) {};
 
-CollisionFinder::CollisionFinder(int n) : m_stringCount(n) {};
-
-std::vector<std::string> CollisionFinder::generateStringHashes(int n)
+std::vector<std::string> CollisionFinder::generateStringHashes(const int &n)
 {
     auto randomChar = []() -> char {
-        const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
-        const size_t maxIndex = (sizeof(charset) - 2);
+        constexpr char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
+        constexpr size_t maxIndex = (sizeof(charset) - 2);
         return charset[rand() % maxIndex];
     };
+
     std::vector<std::string> randomStrings;
     for (auto i = 0; i < n; ++i) {
         std::string str(16,0);
@@ -18,20 +18,19 @@ std::vector<std::string> CollisionFinder::generateStringHashes(int n)
         randomStrings.push_back(str);
     }
     std::vector<std::string> hashes;
-    for (auto &str : randomStrings) {
+    for (auto &str : randomStrings)
         hashes.push_back(m_hasher.MD5(str));
-    }
 
     return hashes;
 }
 
-std::vector<byte> CollisionFinder::sequenceMaker(std::vector<std::string> &hashes, int bitCount)
+std::vector<byte> CollisionFinder::sequenceMaker(std::vector<std::string> &hashes, const int bitCount)
 {
     std::vector<byte> sequence;
     for (const auto &hash : hashes) {
         std::string binaryString;
-        for (char hexValue : hash) {
-            auto value = (hexValue >= '0' && hexValue <= '9') ? hexValue - '0' :
+        for (const char hexValue : hash) {
+            const auto value = (hexValue >= '0' && hexValue <= '9') ? hexValue - '0' :
                          (hexValue >= 'a' && hexValue <= 'z') ? hexValue - 'a' + 10 :
                          (hexValue >= 'A' && hexValue <= 'Z') ? hexValue - 'A' + 10 : 0;
             
@@ -49,15 +48,14 @@ std::vector<byte> CollisionFinder::sequenceMaker(std::vector<std::string> &hashe
     return sequence;
 }
 
-void CollisionFinder::collisionPower(std::vector<std::string> &hashes, int bitCount)
+void CollisionFinder::collisionPower(std::vector<std::string> &hashes, const int bitCount)
 {
-    auto sequence = sequenceMaker(hashes, bitCount);
+    const auto sequence = sequenceMaker(hashes, bitCount);
 
     for (size_t i = 0; i < sequence.size(); ++i) {
         for (size_t j = i + 1; j < sequence.size(); ++j) {
-            if (sequence[i] == sequence[j]) {
+            if (sequence[i] == sequence[j])
                 m_collisionPowers.push_back(j - i);
-            }
         }
     }
     m_collisionPowers.push_back(INT32_MAX);
@@ -73,7 +71,7 @@ void CollisionFinder::makeCsv()
     }
     auto bitCount = 8;
     csvFile << "bitCount,Power\n";
-    for (auto &power : m_collisionPowers) {
+    for (const auto &power : m_collisionPowers) {
         if (power == INT32_MAX) {
             csvFile << bitCount << ",\n";
             bitCount +=2;

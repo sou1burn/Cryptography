@@ -11,14 +11,14 @@ namespace md5
 class CollisionFinder 
 {
 public:
-    explicit CollisionFinder(int n);
+    explicit CollisionFinder(const int &n);
     ~CollisionFinder() = default;
     
     void findCollision();
 private:
-    std::vector<byte> sequenceMaker(std::vector<std::string> &hashes, int bitCount);
-    std::vector<std::string> generateStringHashes(int n);
-    void collisionPower(std::vector<std::string> &hashes, int bitCount);
+    std::vector<byte> sequenceMaker(std::vector<std::string> &hashes, const int bitCount);
+    std::vector<std::string> generateStringHashes(const int &n);
+    void collisionPower(std::vector<std::string> &hashes, const int bitCount);
     void makeCsv();
     std::vector<int> m_collisionPowers;
     MD5Hasher m_hasher;

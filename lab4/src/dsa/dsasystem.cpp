@@ -1,5 +1,6 @@
 #include "dsasystem.h"
-
+// сравнить хэши сообщения и пароля
+// доп 9
 static constexpr auto N = 256;
 static constexpr auto L = 1024;
 
@@ -48,9 +49,9 @@ dsa::cpp_int modExp(dsa::cpp_int base, dsa::cpp_int exp, const dsa::cpp_int& mod
     dsa::cpp_int result = 1;
     base %= mod;
     while (exp > 0) {
-        if (exp & 1) {
+        if (exp & 1)
             result = (result * base) % mod;
-        }
+
         base = (base * base) % mod;
         exp >>= 1;
     }
@@ -75,9 +76,9 @@ dsa::cpp_int modInverse(const dsa::cpp_int& a, const dsa::cpp_int& m)
 {
     dsa::cpp_int x, y;
     dsa::cpp_int g = gcdExtended(a, m, x, y);
-    if (g != 1) {
+    if (g != 1)
         throw std::runtime_error("modInverse: обратный элемент не существует");
-    }
+
     return (x % m + m) % m;
 }
 
@@ -97,7 +98,13 @@ DSACryptosystem::DSACryptosystem(const int &keyLength, const std::string &passwo
     m_password = password;
     m_message = message;
     m_formScheme = new DigitalSignatureFormScheme(m_hasher.MD5(message));
-    m_validateScheme = new DigitalSignatureValidateScheme(m_formScheme->m_q, m_formScheme->m_p, 1024, m_formScheme->m_g, m_formScheme->m_hash, generateByPassword, m_hasher.MD5(password));
+    m_validateScheme = new DigitalSignatureValidateScheme(m_formScheme->m_q,
+                                                          m_formScheme->m_p,
+                                                       1024,
+                                                          m_formScheme->m_g,
+                                                          m_formScheme->m_hash,
+                                                          generateByPassword,
+                                                          m_hasher.MD5(password));
 }
 
 DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
@@ -234,6 +241,7 @@ int256 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword
 inline void DigitalSignatureValidateScheme::formPair()
 {
     m_signature = std::make_pair(m_r, m_s);
+    m_keys = std::make_pair(m_secretKey, m_publicKey);
 }
 
 inline void DigitalSignatureValidateScheme::generatePublicKey()
@@ -257,6 +265,10 @@ bool DSACryptosystem::validateSignature() const
 const std::pair<int256, int256> &DSACryptosystem::signature() const
 {
     return m_validateScheme->m_signature;
+}
+
+const std::pair<int256, int1024> &DSACryptosystem::keys() const {
+    return m_validateScheme->m_keys;
 }
 
 }   // namespace dsa

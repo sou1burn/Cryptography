@@ -38,6 +38,7 @@ struct DigitalSignatureValidateScheme
     int256 m_hash;
     const std::string m_hashString;
     std::pair<int256, int256> m_signature {};
+    std::pair<int256, int1024> m_keys {};
 
     int256 chooseK();
     int256 calculateR();
@@ -54,6 +55,7 @@ public:
     ~DSACryptosystem() = default;
     bool validateSignature() const;
     const std::pair<int256, int256> &signature() const;
+    const std::pair<int256, int1024> &keys() const;
 
 private:
     // struct Pimpl;
