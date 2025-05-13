@@ -2,6 +2,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/random.hpp>
 #include <random>
+#include <boost/multiprecision/miller_rabin.hpp>
 #include "md5hash.h"
 
 namespace dsa {
@@ -33,8 +34,8 @@ struct DigitalSignatureValidateScheme
     int256 m_r;
     int256 m_s;
 
-    int256 m_secretKey;
-    int1024 m_publicKey;
+    int256 m_secretKey; //x
+    int1024 m_publicKey; //y
     int256 m_hash;
     const std::string m_hashString;
     std::pair<int256, int256> m_signature {};
@@ -43,7 +44,7 @@ struct DigitalSignatureValidateScheme
     int256 chooseK();
     int256 calculateR();
     int256 calculateSecretKey(const bool &byPassword, const std::string &password);
-
+    void sign();
     void generatePublicKey();
     void formPair();
 };

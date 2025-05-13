@@ -4,20 +4,19 @@
 int main()
 {
     md5::MD5Hasher hasher;
-    std::string input;
+    // std::string input;
+    // std::cout << "Enter a string: \n";
+    // std::cin >> input;
+    // const auto hash = hasher.MD5(input);
+    // std::cout << "MD5 hash: " << hash << "\n";
+    //
+    // int N;
+    // std::cout << "Enter number N of strings: \n";
+    // std::cin >> N;
 
-    std::cout << "Enter a string: \n";
-    std::cin >> input;
-    const auto hash = hasher.MD5(input);
-    std::cout << "MD5 hash: " << hash << "\n";
-
-    int N;
-    std::cout << "Enter number N of strings: \n";
-    std::cin >> N;
-
-    md5::CollisionFinder finder(N);
-
-    finder.findCollision();
+    // md5::CollisionFinder finder(160);
+    //
+    // const auto hashes = finder.generateStringHashes(160);
 
     std::string keyLength;
     auto byPassword = false;
@@ -42,16 +41,21 @@ int main()
         return 1;
     }
 
-    const dsa::DSACryptosystem dsa(std::stoi(keyLength), password, msg, byPassword);
-    std::cout << "Generated DSA keys:\n";
-    std::cout << "Public key: " << dsa.keys().second << " \nPrivate key: " << dsa.keys().first << "\n";
+    std::cout << "Hash message: " << hasher.MD5(msg) << std::endl;
 
-    std::cout << "Signature: r = " << dsa.signature().first << " \n s = " << dsa.signature().second << "\n";
+    // for (const auto &hash : hashes) {
+        const dsa::DSACryptosystem dsa(std::stoi(keyLength), password, msg, byPassword);
+        std::cout << "Generated DSA keys:\n";
 
-    if (dsa.validateSignature())
-        std::cout << "Signature validated successfully \n";
-    else
-        std::cout << "Signature validation failed \n";
+        std::cout << "Public key: " << dsa.keys().second << " \nPrivate key: " << dsa.keys().first << "\n";
+
+        std::cout << "Signature: \n r = " << dsa.signature().first << " \n s = " << dsa.signature().second << "\n";
+
+        if (dsa.validateSignature())
+            std::cout << "Signature validated successfully \n";
+        else
+            std::cout << "Signature validation failed \n";
+    // }
 
     return 0;
 }

@@ -1,7 +1,54 @@
 #include "dsasystem.h"
 // сравнить хэши сообщения и пароля
 // доп 9
-static constexpr auto N = 256;
+//Для каждой новой подписи с помощью DSAтребуется генерировать новое значениеk, а после создания подписи немедленно уничтожать. Если эти требования не выполняются, то противник может вычислить секретный ключ создателя подписи.
+//
+//Первый сценарий атаки
+//
+//Противник узнал значение k, которое использовалось при создании подписи. Конкретный способ, который использовал для этого противник, неважен. Возможно, это значениеkне было уничтожено, или противник использовал какие-либо свойства генератора случайных чисел, который сгенерировалk.
+//
+//Противник знает:
+//
+//r= (g^k modp)modq,
+//
+//s = (k^-1 (H(m) + xr)) mod q,
+//
+//k, m.
+//
+//Противник вычисляет:
+//
+//s - k-1*H(m) = k-1rx mod q
+//
+//т.к. q– простое, то можно найти (k-1*r)-1modq, откуда
+//
+//x = (s – k-1*H(m))* (k-1*r)-1 mod q.
+//
+//Второй сценарий атаки
+//
+//Противник не знает значения k, но он получил две подписи, при создании которых использовалось одно и то же значениеk.
+//
+//Противник знает:
+//
+//r= (g^kmodp)modq,
+//
+//s1 = (k^-1 (H(m1) + xr)) mod q,
+//
+//s2 = (k^-1 (H(m2) + xr)) mod q,
+//
+//m1,m2.
+//
+//Противник производит следующие действия.
+//
+//s1 – s2 = k-1 (H(m1) – H(m2)) mod q (1)
+//
+//из уравнения (1) вычисляет k^-1modq
+//
+//зная k^-1modq, вычисляет k
+//
+//когда k известно, можно произвести те же вычисления, что и в первом сценарии
+
+
+static constexpr auto N = 160;
 static constexpr auto L = 1024;
 
 namespace helpers {
@@ -88,7 +135,26 @@ dsa::int256 hexStringToInt256(const std::string& hexStr)
     return result;
 }
 
-} // namespace helpers
+std::string int256ToHexString(const dsa::int256& num)
+{
+    std::stringstream ss;
+    ss << std::hex << num;
+    return ss.str();
+}
+
+bool isPrime(const dsa::int256 &n, int iterations = 5)
+{
+    if (n <= 1) return false;
+    return boost::multiprecision::miller_rabin_test(n, iterations);
+}
+
+bool isPrime(const dsa::int1024 &n, int iterations = 5)
+{
+    if (n <= 1) return false;
+    return boost::multiprecision::miller_rabin_test(n, iterations);
+}
+
+}// namespace helpers
 
 namespace dsa {
 
@@ -97,10 +163,11 @@ DSACryptosystem::DSACryptosystem(const int &keyLength, const std::string &passwo
     m_keyLength = keyLength;
     m_password = password;
     m_message = message;
+    m_hash = m_hasher.MD5(message);
     m_formScheme = new DigitalSignatureFormScheme(m_hasher.MD5(message));
     m_validateScheme = new DigitalSignatureValidateScheme(m_formScheme->m_q,
                                                           m_formScheme->m_p,
-                                                       1024,
+                                                          keyLength,
                                                           m_formScheme->m_g,
                                                           m_formScheme->m_hash,
                                                           generateByPassword,
@@ -120,6 +187,7 @@ DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, 
 {
     m_hash = helpers::hexStringToInt256(m_hashString);
     m_secretKey = calculateSecretKey(byPassword, password);
+    sign();
     generatePublicKey();
     formPair();
 }
@@ -135,7 +203,7 @@ void DigitalSignatureFormScheme::generateQ()
         q >>= (256 - N);
         q |= (int256(1) << (N - 1));
         q |= 1;
-    } while (!helpers::testFermat(q));
+    } while (!helpers::isPrime(q));
 
     this->m_q = q;
 }
@@ -154,10 +222,10 @@ void DigitalSignatureFormScheme::findP() {
 
         int1024 p = k * m_q + 1;
 
-        if (helpers::bitLength(p) != L)
+        if (helpers::bitLength(p) != L || helpers::bitLength(p) % 64 != 0)
             continue;
 
-        if (helpers::testFermat(p)) {
+        if (helpers::isPrime(p)) {
             this->m_p = p;
             found = true;
             break;
@@ -178,12 +246,12 @@ void DigitalSignatureFormScheme::findG()
 
     const int1024 exp = (m_p - 1) / m_q;
     boost::random::mt19937 gen(std::random_device{}());
-    const boost::random::uniform_int_distribution<int1024> dist(2, m_p - 2); // h ∈ (1, p-1)
+    const boost::random::uniform_int_distribution<int1024> dist(2, m_p - 1); // h ∈ (1, p-1)
 
     while (true) {
         int1024 h = dist(gen);
         int1024 g = boost::multiprecision::powm(h, exp, m_p);
-        if (g != 1) {
+        if (g > 1) {
             this->m_g = g;
             break;
         }
@@ -194,7 +262,14 @@ inline int256 DigitalSignatureValidateScheme::chooseK()
 {
     boost::mt19937 gen(std::random_device{}());
     const boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-    m_k = (dist(gen));
+    // while (true) {
+        m_k = (dist(gen));
+        // m_k >>= (256 - N);
+        // m_k |= (int256(1) << (N - 1));
+        // m_k |= 1;
+        // if (m_k > m_q) continue;
+        // else break;
+    // }
     return m_k;
 }
 
@@ -214,29 +289,31 @@ int256 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword
             secretKey = 1;
         m_secretKey = secretKey;
 
-        int256 s;
-        do {
-            m_k = chooseK();
-            calculateR();
-            const auto kInverse = helpers::modInverse(m_k, m_q);
-            s = static_cast<int256>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
-        } while (s == 0);
-
-        m_s = s;
-        return s;
+        return m_secretKey;
     }
+    boost::mt19937 gen(std::random_device{}());
+    boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
 
+    m_secretKey = dist(gen);
+
+    return m_secretKey;
+}
+
+void DigitalSignatureValidateScheme::sign()
+{
     int256 s;
     do {
         m_k = chooseK();
         calculateR();
+    } while (m_r == 0);
+    do {
         const auto kInverse = helpers::modInverse(m_k, m_q);
         s = static_cast<int256>(kInverse * (m_hash + m_secretKey * m_r)) % m_q;
     } while (s == 0);
 
     m_s = s;
-    return s;
 }
+
 
 inline void DigitalSignatureValidateScheme::formPair()
 {
@@ -254,12 +331,23 @@ bool DSACryptosystem::validateSignature() const
     if (m_validateScheme->m_r <= 0 || m_validateScheme->m_r >= m_validateScheme->m_q || m_validateScheme->m_s <= 0 || m_validateScheme->m_s >=m_validateScheme->m_q)
         return false;
 
+    // std::cout << "Hash on validation from DSA params: " << m_hash << std::endl;
+    // std::cout << "Hash on validation from formScheme: " << m_formScheme->m_hash << std::endl;
+    std::cout << "Hash on validation from validationScheme: " << (m_validateScheme->m_hash) << std::endl;
+    if (const auto current_hash = helpers::hexStringToInt256(m_hash) % m_validateScheme->m_q; current_hash != m_validateScheme->m_hash) {
+        std::cout << "lyalyalya" << std::endl;
+    }
+    // helpers::int256ToHexString
     const auto w = static_cast<int1024>(helpers::modInverse(m_validateScheme->m_s, m_validateScheme->m_q));
-    const auto u1 = (m_validateScheme->m_hash * w) % m_validateScheme->m_q;
-    const auto u2 = (m_validateScheme->m_r * w) % m_validateScheme->m_q;
+    const auto u1 = m_validateScheme->m_hash * w % m_validateScheme->m_q;
+    const auto u2 = m_validateScheme->m_r * w % m_validateScheme->m_q;
     const auto v = ((boost::multiprecision::powm(m_validateScheme->m_g, u1, m_validateScheme->m_p) *
                   boost::multiprecision::powm(m_validateScheme->m_publicKey, u2, m_validateScheme->m_p)) % m_validateScheme->m_p) % m_validateScheme->m_q;
-    return v == m_validateScheme->m_r;
+
+    // const auto v = (pow(m_validateScheme->m_g, static_cast<unsigned>(u1)) * pow(m_validateScheme->m_publicKey, static_cast<unsigned>(u2))) % m_validateScheme->m_p % m_validateScheme->m_q;
+    std::cout << " r = " << m_validateScheme->m_r << std::endl;
+    std::cout << " v = " << v << std::endl;
+    return static_cast<int256>(v) == m_validateScheme->m_r;
 }
 
 const std::pair<int256, int256> &DSACryptosystem::signature() const
