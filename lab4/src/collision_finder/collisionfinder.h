@@ -13,11 +13,11 @@ class CollisionFinder
 public:
     explicit CollisionFinder(const int &n);
     ~CollisionFinder() = default;
-    
+
+    std::vector<std::string> generateStringHashes(const int &n);
     void findCollision();
 private:
     std::vector<byte> sequenceMaker(std::vector<std::string> &hashes, const int bitCount);
-    std::vector<std::string> generateStringHashes(const int &n);
     void collisionPower(std::vector<std::string> &hashes, const int bitCount);
     void makeCsv();
     std::vector<int> m_collisionPowers;
