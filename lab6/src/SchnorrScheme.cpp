@@ -1,11 +1,13 @@
-#include "SchnorrScheme.h"
-
 #include <utility>
+#include <random>
+#include <limits>
+#include "SchnorrScheme.h"
 
 Prover::Prover(const SchemeParams& params)
     : params(params)
 {
-    boost::random::mt19937 rng;
+    std::random_device rd;
+    boost::random::mt19937 rng(rd());
     boost::random::uniform_int_distribution<cpp_int> dist(1, params.q - 1);
     x = dist(rng);
     y = boost::multiprecision::powm(params.g, x, params.p);
@@ -18,7 +20,8 @@ const cpp_int& Prover::publicKey() const
 
 std::pair<cpp_int, cpp_int> Prover::generateResponse(const cpp_int &challenge) const
 {
-    boost::random::mt19937 gen(static_cast<unsigned>(time(nullptr)));
+    std::random_device rd;
+    boost::random::mt19937 gen(rd());
     const boost::random::uniform_int_distribution<cpp_int> dist(1, params.q - 1);
     const cpp_int k = dist(gen);
     cpp_int r = powm(params.g, k, params.p);
@@ -44,7 +47,8 @@ bool Verifier::verify(const cpp_int &r, const cpp_int &s, const cpp_int &challen
 {
     // g^s ≡ r * y^c mod p
     const cpp_int left = boost::multiprecision::powm(params.g, s, params.p);
-    const cpp_int right = (r * boost::multiprecision::powm(publicKey, challenge, params.p)) % params.p;
+    const cpp_int y_pow_c = boost::multiprecision::powm(publicKey, challenge, params.p);
+    const cpp_int right = (r * y_pow_c) % params.p;
     return (left == right);
 }
 
@@ -52,6 +56,9 @@ SchemeParams SchnorrScheme::generateParams(const int &level)
 {
     SchemeParams params;
     generatePrimes(params, level);
+    if ((params.p - 1) % params.q != 0)
+        throw std::runtime_error("Invalid primes: q does not divide p-1");
+
     findGenerator(params);
     return params;
 }
@@ -68,11 +75,10 @@ inline cpp_int SchnorrScheme::powm(const cpp_int &base, const cpp_int &exp, cons
 
 void SchnorrScheme::generatePrimes(SchemeParams &params, int level)
 {
-    boost::random::mt19937 gen(static_cast<unsigned>(time(nullptr)));
-
-    params.q = generatePrime(gen, level / 2);
-
+    std::random_device rd;
+    boost::random::mt19937 gen(rd());
     do {
+        params.q = generatePrime(gen, level / 2);
         params.p = 2 * params.q + 1;
     } while (!isPrime(params.p, gen));
 }
@@ -84,7 +90,7 @@ void SchnorrScheme::findGenerator(SchemeParams &params)
 
     do {
         params.g = dist(gen);
-    } while (boost::multiprecision::powm(params.g, params.q, params.p) != 1);
+    } while (params.g == 1 || boost::multiprecision::powm(params.g, params.q, params.p) != 1);
 }
 
 cpp_int SchnorrScheme::generatePrime(boost::random::mt19937 &gen, int bits)

@@ -15,9 +15,13 @@ int main(int argc, char **argv) {
     for (auto i = 0; i < rounds; ++i) {
         cpp_int challenge = verifier.generateChallenge();
         const auto response  = prover.generateResponse(challenge);
-
-        bool isValid = verifier.verify(response.first, response.second, challenge);
+        bool isValid;
+        if (i % 20 == 0)
+            isValid = verifier.verify(response.first, response.second + 1, challenge);
+        else
+            isValid = verifier.verify(response.first, response.second, challenge);
         std::cout << "Round " << i + 1 << ": " << (isValid ? "Accepted" : "Rejected") << std::endl;
     }
+
     return 0;
 }
