@@ -141,7 +141,7 @@ void SchnorrSignature::sign()
 {
     const auto xString = intToHex(m_x);
     const auto toHash = m_message + xString;
-
+    std::cout << "Hashing:   " << toHash << std::endl;
     const auto hash = sha256(toHash);
     m_e = cpp_int("0x" + hash);
     m_y = (m_r + m_s * m_e) % m_params.q;
@@ -150,16 +150,39 @@ void SchnorrSignature::sign()
 
 bool SchnorrSignature::verify() const
 {
-    const cpp_int first = boost::multiprecision::powm(m_params.g, m_y, m_params.p);
-    const cpp_int v = boost::multiprecision::powm(m_params.g, m_publicKey, m_params.p);
-    const cpp_int sec = boost::multiprecision::powm(v, m_e, m_params.p);
-    const cpp_int tmp = (first * sec % m_params.p);
-    const auto& x = tmp;
-    const auto xString = intToHex(x);
-    const auto toHash = m_message + xString;
-    const auto hash = sha256(toHash);
-    const auto e = cpp_int("0x" + hash);
-    return (e == m_e);
+    // const cpp_int first = boost::multiprecision::powm(m_params.g, m_y, m_params.p);
+    // // const cpp_int v = boost::multiprecision::powm(m_params.g, m_publicKey, m_params.p);
+    // const cpp_int sec = boost::multiprecision::powm(m_publicKey, m_e, m_params.p);
+    // const cpp_int tmp = (first * sec % m_params.p);
+    // const auto& x = tmp;
+    // const auto xString = intToHex(x);
+    // const auto toHash = m_message + xString;
+    // const auto hash = sha256(toHash);
+    // std::cout << "Verifying: " << toHash << std::endl;
+    // const auto e = cpp_int("0x" + hash);
+    // std::cout << "Computed e: " << e << ", Expected e: " << m_e << std::endl;
+    //
+    // return (e == m_e);
+    // signature = (e, s)
+    const cpp_int &e = m_signature.first;
+    const cpp_int &s = m_signature.second;
+    const cpp_int &r = m_x;
+
+    // 1) first = g^s mod p
+    const cpp_int first = boost::multiprecision::powm(m_params.g, s, m_params.p);
+
+    // 2) sec = publicKey^e mod p
+    const cpp_int sec = boost::multiprecision::powm(m_publicKey, e, m_params.p);
+
+    const cpp_int mult = r * sec;
+    const cpp_int third  = mult % m_params.p;
+
+    if (first != third) return false;
+    const std::string hstr = intToHex(r);
+    const cpp_int e2("0x" + sha256(m_message + hstr));
+    std::cout << "Verifying: " << m_message + hstr << std::endl;
+
+    return e2 == e;
 }
 
 std::string SchnorrSignature::sha256(const std::string &message) const
@@ -169,8 +192,6 @@ std::string SchnorrSignature::sha256(const std::string &message) const
     SHA256(data, message.size(), hash);
     std::stringstream ss;
     for (auto i = 0; i < SHA256_DIGEST_LENGTH; i++)
-    {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
-    }
     return ss.str();
 }

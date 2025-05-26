@@ -21,16 +21,14 @@ int main(int argc, char **argv) {
         else
             isValid = verifier.verify(response.first, response.second, challenge);
         std::cout << "Round " << i + 1 << ": " << (isValid ? "Accepted" : "Rejected") << std::endl;
-    }
-
-    SchnorrSignature signature("abracadabra avada kedavra", params, prover.privateKey(), prover.publicKey());
-    signature.sign();
-    std::cout << "Signature: e = " << signature.signature().first
-              << ", y = " << signature.signature().second << std::endl;
-    if (signature.verify()) {
-        std::cout << "Signature is valid!" << std::endl;
-    } else {
-        std::cout << "Signature is invalid!" << std::endl;
+        SchnorrSignature signature("abracadabra avada kedavra", params, prover.privateKey(), prover.publicKey());
+        signature.sign();
+        std::cout << "Signature: e = " << signature.signature().first
+                  << ", y = " << signature.signature().second << std::endl;
+        if (signature.verify())
+            std::cout << "Signature is valid!" << std::endl;
+        else
+            std::cout << "Signature is invalid!" << std::endl;
     }
 
     return 0;
