@@ -51,7 +51,7 @@ Verifier::Verifier(SchemeParams params, cpp_int publicKey)
 
 cpp_int Verifier::generateChallenge() const
 {
-    boost::random::mt19937 gen(static_cast<unsigned>(time(nullptr)));
+    boost::random::mt19937 gen(std::random_device{}());
     const boost::random::uniform_int_distribution<cpp_int> dist(1, params.q - 1);
     return dist(gen);
 }
@@ -98,7 +98,7 @@ void SchnorrScheme::generatePrimes(SchemeParams &params, int level)
 
 void SchnorrScheme::findGenerator(SchemeParams &params)
 {
-    boost::random::mt19937 gen(static_cast<unsigned>(time(nullptr)));
+    boost::random::mt19937 gen(std::random_device{}()); //static_cast<unsigned>(time(nullptr))
     boost::random::uniform_int_distribution<cpp_int> dist(2, params.p - 1);
 
     do {
@@ -154,7 +154,7 @@ bool SchnorrSignature::verify() const
     const cpp_int v = boost::multiprecision::powm(m_params.g, m_publicKey, m_params.p);
     const cpp_int sec = boost::multiprecision::powm(v, m_e, m_params.p);
     const cpp_int tmp = (first * sec % m_params.p);
-    const auto x = tmp;
+    const auto& x = tmp;
     const auto xString = intToHex(x);
     const auto toHash = m_message + xString;
     const auto hash = sha256(toHash);
@@ -165,7 +165,7 @@ bool SchnorrSignature::verify() const
 std::string SchnorrSignature::sha256(const std::string &message) const
 {
     unsigned char hash[SHA256_DIGEST_LENGTH];
-    const unsigned char* data = reinterpret_cast<const unsigned char *>(message.c_str());
+    const auto* data = reinterpret_cast<const unsigned char *>(message.c_str());
     SHA256(data, message.size(), hash);
     std::stringstream ss;
     for (auto i = 0; i < SHA256_DIGEST_LENGTH; i++)
