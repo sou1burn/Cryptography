@@ -1,7 +1,15 @@
 #include <utility>
 #include <random>
-#include <limits>
+#include <openssl/sha.h>
 #include "SchnorrScheme.h"
+
+template <typename T>
+static std::string intToHex(const T &value)
+{
+    std::stringstream ss;
+    ss << std::hex << value;
+    return ss.str();
+}
 
 Prover::Prover(const SchemeParams& params)
     : params(params)
@@ -18,6 +26,11 @@ const cpp_int& Prover::publicKey() const
     return y;
 }
 
+const cpp_int& Prover::privateKey() const
+{
+    return x;
+}
+
 std::pair<cpp_int, cpp_int> Prover::generateResponse(const cpp_int &challenge) const
 {
     std::random_device rd;
@@ -32,7 +45,7 @@ std::pair<cpp_int, cpp_int> Prover::generateResponse(const cpp_int &challenge) c
 
 Verifier::Verifier(SchemeParams params, cpp_int publicKey)
     : params(std::move(params)),
-      publicKey(std::move(publicKey))
+      m_publicKey(std::move(publicKey))
 {
 }
 
@@ -47,7 +60,7 @@ bool Verifier::verify(const cpp_int &r, const cpp_int &s, const cpp_int &challen
 {
     // g^s ≡ r * y^c mod p
     const cpp_int left = boost::multiprecision::powm(params.g, s, params.p);
-    const cpp_int y_pow_c = boost::multiprecision::powm(publicKey, challenge, params.p);
+    const cpp_int y_pow_c = boost::multiprecision::powm(m_publicKey, challenge, params.p);
     const cpp_int right = (r * y_pow_c) % params.p;
     return (left == right);
 }
@@ -65,7 +78,7 @@ SchemeParams SchnorrScheme::generateParams(const int &level)
 
 inline bool SchnorrScheme::isPrime(const cpp_int &n, boost::random::mt19937 &gen)
 {
-    return boost::multiprecision::miller_rabin_test(n, 25, gen);
+    return boost::multiprecision::miller_rabin_test(n, 5, gen);
 }
 
 inline cpp_int SchnorrScheme::powm(const cpp_int &base, const cpp_int &exp, const cpp_int &mod)
@@ -111,4 +124,53 @@ cpp_int SchnorrScheme::generateRandomInt(boost::random::mt19937 &gen, int bits)
     }
     num |= (cpp_int(1) << (bits - 1));
     return num;
+}
+
+SchnorrSignature::SchnorrSignature(const std::string &message, const SchemeParams &param, const cpp_int &secret, const cpp_int &publicKey)
+    : m_message(message), m_params(param), m_s(secret), m_publicKey(publicKey)
+{
+    boost::random::mt19937 gen(std::random_device{}());
+    boost::random::uniform_int_distribution<cpp_int> dist(2, m_params.q);
+    do {
+        m_r = dist(gen);
+    } while (m_r >= m_params.q);
+    m_x = boost::multiprecision::powm(m_params.g, m_r, m_params.p);
+}
+
+void SchnorrSignature::sign()
+{
+    const auto xString = intToHex(m_x);
+    const auto toHash = m_message + xString;
+
+    const auto hash = sha256(toHash);
+    m_e = cpp_int("0x" + hash);
+    m_y = (m_r + m_s * m_e) % m_params.q;
+    m_signature = {m_e, m_y};
+}
+
+bool SchnorrSignature::verify() const
+{
+    const cpp_int first = boost::multiprecision::powm(m_params.g, m_y, m_params.p);
+    const cpp_int v = boost::multiprecision::powm(m_params.g, m_publicKey, m_params.p);
+    const cpp_int sec = boost::multiprecision::powm(v, m_e, m_params.p);
+    const cpp_int tmp = (first * sec % m_params.p);
+    const auto x = tmp;
+    const auto xString = intToHex(x);
+    const auto toHash = m_message + xString;
+    const auto hash = sha256(toHash);
+    const auto e = cpp_int("0x" + hash);
+    return (e == m_e);
+}
+
+std::string SchnorrSignature::sha256(const std::string &message) const
+{
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    const unsigned char* data = reinterpret_cast<const unsigned char *>(message.c_str());
+    SHA256(data, message.size(), hash);
+    std::stringstream ss;
+    for (auto i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+    }
+    return ss.str();
 }
