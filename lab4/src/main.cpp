@@ -71,6 +71,22 @@ struct SuccessfulEntry {
     dsa::int1024 publicKey;
 };
 
+std::vector<std::string> generateStrings(const int &n) {
+    auto randomChar = []() -> char {
+        constexpr char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
+        constexpr size_t maxIndex = (sizeof(charset) - 2);
+        return charset[rand() % maxIndex];
+    };
+
+    std::vector<std::string> randomStrings;
+    for (auto i = 0; i < n; ++i) {
+        std::string str(32,0);
+        std::generate_n(str.begin(), 32, randomChar);
+        randomStrings.push_back(str);
+    }
+    return randomStrings;
+}
+
 int main() {
     // md5::MD5Hasher hasher;
 
@@ -99,10 +115,9 @@ int main() {
     }
 
     std::vector<SuccessfulEntry> successfulEntries;
-
+    const auto messages = generateStrings(N);
     for (auto i = 0; i < N; ++i) {
-        std::string msg = "message_" + std::to_string(i);
-
+        const auto msg = messages[i];
         try {
             const dsa::DSACryptosystem dsa(std::stoi(keyLength), password, msg, byPassword);
 
