@@ -72,7 +72,7 @@ struct SuccessfulEntry {
 };
 
 int main() {
-    md5::MD5Hasher hasher;
+    // md5::MD5Hasher hasher;
 
     std::string keyLength;
     auto byPassword = false;
@@ -100,7 +100,7 @@ int main() {
 
     std::vector<SuccessfulEntry> successfulEntries;
 
-    for (int i = 0; i < N; ++i) {
+    for (auto i = 0; i < N; ++i) {
         std::string msg = "message_" + std::to_string(i);
 
         try {
@@ -131,6 +131,9 @@ int main() {
                   << "\nPublic key: " << entry.publicKey
                   << "\n";
     }
+
+    auto dsa = dsa::DSACryptosystem(std::stoi(keyLength), password, "message1", byPassword);
+    dsa.attack("message1", "message2");
 
     return 0;
 }

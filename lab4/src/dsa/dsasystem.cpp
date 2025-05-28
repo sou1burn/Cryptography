@@ -1,31 +1,13 @@
 #include "dsasystem.h"
+
+static constexpr auto N = 160;
+static constexpr auto L = 1024;
+
 // сравнить хэши сообщения и пароля
 // доп 9
-//Для каждой новой подписи с помощью DSAтребуется генерировать новое значениеk, а после создания подписи немедленно уничтожать. Если эти требования не выполняются, то противник может вычислить секретный ключ создателя подписи.
+//Cценарий атаки
 //
-//Первый сценарий атаки
-//
-//Противник узнал значение k, которое использовалось при создании подписи. Конкретный способ, который использовал для этого противник, неважен. Возможно, это значениеkне было уничтожено, или противник использовал какие-либо свойства генератора случайных чисел, который сгенерировалk.
-//
-//Противник знает:
-//
-//r= (g^k modp)modq,
-//
-//s = (k^-1 (H(m) + xr)) mod q,
-//
-//k, m.
-//
-//Противник вычисляет:
-//
-//s - k-1*H(m) = k-1rx mod q
-//
-//т.к. q– простое, то можно найти (k-1*r)-1modq, откуда
-//
-//x = (s – k-1*H(m))* (k-1*r)-1 mod q.
-//
-//Второй сценарий атаки
-//
-//Противник не знает значения k, но он получил две подписи, при создании которых использовалось одно и то же значениеk.
+//Противник не знает значения k, но он получил две подписи, при создании которых использовалось одно и то же значение k.
 //
 //Противник знает:
 //
@@ -47,11 +29,8 @@
 //
 //когда k известно, можно произвести те же вычисления, что и в первом сценарии
 
-
-static constexpr auto N = 160;
-static constexpr auto L = 1024;
-
 namespace helpers {
+
 bool testFermat(const dsa::int256 &q, const int iterations = 5)
 {
     if (q < 4 || q % 2 == 0)
@@ -158,20 +137,22 @@ bool isPrime(const dsa::int1024 &n, int iterations = 5)
 
 namespace dsa {
 
-DSACryptosystem::DSACryptosystem(const int &keyLength, const std::string &password,const std::string &message, const bool &generateByPassword /*= false*/)
+DSACryptosystem::DSACryptosystem(const int &keyLength, const std::string &password, const std::string &message, const bool &generateByPassword /*= false*/)
 {
     m_keyLength = keyLength;
     m_password = password;
     m_message = message;
     m_hash = m_hasher.MD5(message);
-    m_formScheme = new DigitalSignatureFormScheme(m_hasher.MD5(message));
+    m_formScheme = new DigitalSignatureFormScheme(m_hash);
+    // setPublicParams();
     m_validateScheme = new DigitalSignatureValidateScheme(m_formScheme->m_q,
                                                           m_formScheme->m_p,
                                                           keyLength,
                                                           m_formScheme->m_g,
-                                                          m_formScheme->m_hash,
+                                                          m_hash,
                                                           generateByPassword,
                                                           m_hasher.MD5(password));
+    // setValidationParams();
 }
 
 DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
@@ -185,8 +166,8 @@ DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
 DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password)
     : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash)
 {
-    m_hash = helpers::hexStringToInt256(m_hashString);
-    m_secretKey = calculateSecretKey(byPassword, password);
+    m_hash = helpers::hexStringToInt256(m_hashString) % m_q;
+    calculateSecretKey(byPassword, password);
     generatePublicKey();
     sign();
     formPair();
@@ -246,10 +227,9 @@ void DigitalSignatureFormScheme::findG()
 
     const int1024 exp = (m_p - 1) / m_q;
     boost::random::mt19937 gen(std::random_device{}());
-    // const boost::random::uniform_int_distribution<int1024> dist(2, m_p - 2); // h ∈ (2, p-2)
-
+    const boost::random::uniform_int_distribution<int1024> dist(2, m_p - 2); // h ∈ (2, p-2)
     while (true) {
-        int1024 h = 2;
+        int1024 h = dist(gen);
         int1024 g = boost::multiprecision::powm(h, exp, m_p);
         if (g > 1) {
             this->m_g = g;
@@ -258,29 +238,29 @@ void DigitalSignatureFormScheme::findG()
     }
 }
 
-inline int256 DigitalSignatureValidateScheme::chooseK()
+void DigitalSignatureValidateScheme::chooseK()
 {
-    boost::mt19937 gen(std::random_device{}());
-    const boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-    // while (true) {
-        m_k = (dist(gen));
-        // m_k >>= (256 - N);
-        // m_k |= (int256(1) << (N - 1));
-        // m_k |= 1;
-        // if (m_k > m_q) continue;
-        // else break;
-    // }
-    return m_k;
+    std::random_device rd{};
+    boost::random::mt19937 base_rng{rd()};
+    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> bit_rng{base_rng};
+
+    int256 k;
+    const int256 max_acceptable = std::numeric_limits<int256>::max() - std::numeric_limits<int256>::max() % m_q;
+    do {
+        k = bit_rng();
+    } while (k >= max_acceptable || k == 0);
+
+    k = k % m_q;
+    m_k = k;
 }
 
-inline int256 DigitalSignatureValidateScheme::calculateR()
+void DigitalSignatureValidateScheme::calculateR()
 {
-    const auto tmp = boost::multiprecision::powm(m_g, static_cast<int1024>(m_k), m_p) % m_q;
-    m_r = tmp.convert_to<int256>();
-    return m_r;
+    const auto tmp = helpers::modExp(m_g, m_k, m_p) % m_q;//boost::multiprecision::powm(m_g, m_k, m_p);
+    m_r = static_cast<int256>(tmp % m_q);
 }
 
-int256 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, const std::string &password)
+void DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, const std::string &password)
 {
     if (byPassword) {
         const int256 passwordHash = helpers::hexStringToInt256(password);
@@ -288,15 +268,12 @@ int256 DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword
         if (secretKey == 0)
             secretKey = 1;
         m_secretKey = secretKey;
-
-        return m_secretKey;
     }
     boost::mt19937 gen(std::random_device{}());
     boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-
-    m_secretKey = dist(gen);
-
-    return m_secretKey;
+    do
+        m_secretKey = dist(gen);
+    while (m_secretKey > m_q);
 }
 
 // void DigitalSignatureValidateScheme::sign()
@@ -323,33 +300,41 @@ void DigitalSignatureValidateScheme::sign()
     std::cout << "[SIGN] hash H(m) = " << m_hash << "\n\n";
 
     do {
-        m_k = chooseK();
+        chooseK();
         std::cout << "[SIGN] chosen k = " << m_k << "\n";
         calculateR();
         std::cout << "[SIGN] computed r = " << m_r << "\n";
     } while (m_r == 0);
 
-    do {
-        const auto kInv = helpers::modInverse(m_k, m_q);
-        m_k = chooseK();
-        std::cout << "[SIGN] k⁻¹ mod q = " << kInv << "\n";
-        m_s = static_cast<int256>(kInv * (m_hash + m_secretKey * m_r)) % m_q;
-        std::cout << "[SIGN] computed s = " << m_s << "\n";
-    } while (m_s == 0);
+    const auto kInverse = static_cast<int256>(helpers::modInverse(m_k, m_q));
+    const auto term1 = m_hash + m_secretKey * m_r;
+    m_s = (kInverse * term1) % m_q;
+
+    if (m_s == 0) {
+        sign();
+        return;
+    }
+    // do {
+    //     const auto kInv = helpers::modInverse(m_k, m_q);
+    //     std::cout << "[SIGN] k⁻¹ mod q = " << kInv << "\n";
+    //     cpp_int tmp = (kInv * (m_hash + m_secretKey * m_r)) % m_q;
+    //     m_s = tmp.convert_to<int256>();
+    //     std::cout << "[SIGN] computed s = " << m_s << "\n";
+    // } while (m_s == 0);
 
     std::cout << "[SIGN] signature pair (r, s) = ("
               << m_r << ", " << m_s << ")" << "Len pair: " << helpers::bitLength(m_r) + helpers::bitLength(m_s) << " vs 2*N " << 2 * N <<"\n\n";
 }
 
-inline void DigitalSignatureValidateScheme::formPair()
+void DigitalSignatureValidateScheme::formPair()
 {
     m_signature = std::make_pair(m_r, m_s);
     m_keys = std::make_pair(m_secretKey, m_publicKey);
 }
 
-inline void DigitalSignatureValidateScheme::generatePublicKey()
+void DigitalSignatureValidateScheme::generatePublicKey()
 {
-    m_publicKey = boost::multiprecision::powm(m_g, static_cast<int1024>(m_secretKey), m_p);
+    m_publicKey = static_cast<int1024>(helpers::modExp(m_g, m_secretKey, m_p));//(boost::multiprecision::powm(m_g, static_cast<int1024>(m_secretKey), m_p));
 }
 
 // bool DSACryptosystem::validateSignature() const
@@ -407,16 +392,16 @@ bool DSACryptosystem::validateSignature() const
     }
     std::cout << "[VERIFY] Hash check passed\n\n";
 
-    const auto w  = (helpers::modInverse(s, q));
-    const auto u1 = hashVal * w % q;
-    const auto u2 = r * w % q;
+    const auto w  = (helpers::modInverse(s, q)) % q;
+    const auto u1 = (hashVal * w) % q;
+    const auto u2 = (r * w) % q;
     std::cout << "[VERIFY] w  = s⁻¹ mod q = " << w  << "\n";
     std::cout << "[VERIFY] u1 = H(m)·w mod q = " << u1 << "\n";
     std::cout << "[VERIFY] u2 = r·w mod q = " << u2 << "\n\n";
 
-    const auto lhs = helpers::modExp(g, u1, p);  //boost::multiprecision::powm(g,  u1, p);
-    const auto rhs = helpers::modExp(y, u2, p);  //boost::multiprecision::powm(y,  u2, p);
-    const auto v   = (lhs * rhs % p) % q;
+    const auto lhs = boost::multiprecision::powm(g,  static_cast<int1024>(u1), p);
+    const auto rhs = boost::multiprecision::powm(y,  static_cast<int1024>(u2), p);
+    const auto v   = ((lhs * rhs)% p) % q;
 
     std::cout << "[VERIFY] g^u1 mod p = " << lhs << "\n";
     std::cout << "[VERIFY] y^u2 mod p = " << rhs << "\n";
@@ -436,6 +421,88 @@ const std::pair<int256, int256> &DSACryptosystem::signature() const
 const std::pair<int256, int1024> &DSACryptosystem::keys() const
 {
     return m_validateScheme->m_keys;
+}
+
+//! атака на систему, когда узнали 2 подписи с одним и тем же k
+std::pair<std::pair<int256, int1024>, std::pair<int256, std::pair<int256, int1024>>> DSACryptosystem::generate2SignaturesWithOneK(const std::string &message1, const std::string &message2)
+{
+    const auto formScheme = new DigitalSignatureFormScheme(m_hasher.MD5(message1));
+    const auto validateScheme = new DigitalSignatureValidateScheme(formScheme->m_q,
+                                                                   formScheme->m_p,
+                                                                   m_keyLength,
+                                                                   formScheme->m_g,
+                                                                   formScheme->m_hash,
+                                                                   false, // byPassword
+                                                                   m_hasher.MD5(m_password));
+    const auto k = validateScheme->m_k;
+    const auto sign = validateScheme->m_signature;
+    std::cout << "[ATTACK] k from first signature: " << k << "\n";
+    delete formScheme;
+    delete validateScheme;
+    const auto formScheme2 = new DigitalSignatureFormScheme(m_hasher.MD5(message2));
+    const auto validateScheme2 = new DigitalSignatureValidateScheme(formScheme2->m_q,
+                                                                    formScheme2->m_p,
+                                                                    m_keyLength,
+                                                                    formScheme2->m_g,
+                                                                    formScheme2->m_hash,
+                                                                    false, // byPassword
+                                                                    m_hasher.MD5(m_password));
+    validateScheme2->m_k = k; // use the same k
+    validateScheme2->calculateR();
+    validateScheme2->calculateSecretKey(false, "");
+    validateScheme2->generatePublicKey();
+    validateScheme2->sign();
+    validateScheme2->formPair();
+    std::cout << "[ATTACK] k from first signature: " << validateScheme2->m_k << "\n";
+    const auto signature = validateScheme2->m_signature;
+    delete formScheme2;
+    delete validateScheme2;
+
+    return {sign, {k, signature}};
+}
+
+void DSACryptosystem::attack(const std::string &message1, const std::string &message2)
+{
+    const auto signatures = generate2SignaturesWithOneK(message1, message2);
+    const auto &sign1 = signatures.first;
+    const auto &sign2 = signatures.second.second;
+    const auto &k = signatures.second.first;
+    std::cout << "[ATTACK] Signature 1: (r, s) = (" << sign1.first << ", " << sign1.second << ")\n";
+    std::cout << "[ATTACK] Signature 2: (r, s) = (" << sign2.first << ", " << sign2.second << ")\n";
+    std::cout << "[ATTACK] k = " << k << "\n";
+    // if (sign1.first != sign2.first) {
+    //     std::cout << "[ATTACK] r values are different, cannot proceed with attack.\n";
+    //     return;
+    // }
+
+    auto ds = (sign1.second - sign2.second) % m_validateScheme->m_q;
+    if (ds < 0) ds += m_validateScheme->m_q;
+    if (ds == 0) {
+        std::cout << "[ATTACK] ERROR: s1 - s2 = 0 mod q\n";
+        return;
+    }
+    const auto hash1 = helpers::hexStringToInt256(m_hasher.MD5(message1));
+    const auto hash2 = helpers::hexStringToInt256(m_hasher.MD5(message2));
+    dsa::int256 dh = (hash1 - hash2) % m_validateScheme->m_q;
+    if (dh < 0) dh += m_validateScheme->m_q;
+
+    dsa::int256 inv_ds = static_cast<dsa::int256>(helpers::modInverse(ds, m_validateScheme->m_q));
+    dsa::int256 k_recovered = (dh * inv_ds) % m_validateScheme->m_q;
+
+    auto s1 = sign1.second;
+    auto inv_r = static_cast<dsa::int256>(helpers::modInverse(m_validateScheme->m_r, m_validateScheme->m_q));
+    auto x_recovered = ((s1 * k_recovered - hash1) * inv_r) % m_validateScheme->m_q;
+    if (x_recovered < 0) x_recovered += m_validateScheme->m_q;
+
+    // std::cout << "\n[ATTACK] Recovered k: " << k_recovered << "\n";
+    // std::cout << "[ATTACK] Original k:  " << k << "\n";
+    std::cout << "[ATTACK] Recovered x: " << x_recovered << "\n";
+    std::cout << "[ATTACK] Original x:  " << m_validateScheme->m_secretKey << "\n";
+
+    if (k_recovered == k && x_recovered == m_validateScheme->m_secretKey)
+        std::cout << "[ATTACK] SUCCESS: Key recovered!\n";
+    else
+        std::cout << "[ATTACK] FAILED: Key recovery failed\n";
 }
 
 }   // namespace dsa

@@ -13,9 +13,9 @@ using cpp_int = boost::multiprecision::cpp_int;
 struct DigitalSignatureFormScheme
 {
     explicit DigitalSignatureFormScheme(const std::string &hash);
-    int256 m_q;
-    int1024 m_p;
-    int1024 m_g;
+    int256 m_q {};
+    int1024 m_p {};
+    int1024 m_g {};
     const std::string m_hash;
     void generateQ();
     void findP();
@@ -27,12 +27,12 @@ struct DigitalSignatureValidateScheme
     explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password);
     const int m_hashLength = 256;
     int m_keySize = 1024;
-    int1024 m_g;
-    int256 m_q;
-    int1024 m_p;
-    int256 m_k;
-    int256 m_r;
-    int256 m_s;
+    int1024 m_g {};
+    int256 m_q {};
+    int1024 m_p {};
+    int256 m_k {};
+    int256 m_r {};
+    int256 m_s {};
 
     int256 m_secretKey; //x
     int1024 m_publicKey; //y
@@ -41,9 +41,9 @@ struct DigitalSignatureValidateScheme
     std::pair<int256, int256> m_signature {};
     std::pair<int256, int1024> m_keys {};
 
-    int256 chooseK();
-    int256 calculateR();
-    int256 calculateSecretKey(const bool &byPassword, const std::string &password);
+    void chooseK();
+    void calculateR();
+    void calculateSecretKey(const bool &byPassword, const std::string &password);
     void sign();
     void generatePublicKey();
     void formPair();
@@ -57,6 +57,8 @@ public:
     bool validateSignature() const;
     const std::pair<int256, int256> &signature() const;
     const std::pair<int256, int1024> &keys() const;
+    std::pair<std::pair<int256, int1024>, std::pair<int256, std::pair<int256, int1024>>> generate2SignaturesWithOneK(const std::string &message1, const std::string &message2);
+    void attack(const std::string &message1, const std::string &message2);
 
 private:
     // struct Pimpl;

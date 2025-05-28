@@ -24,7 +24,9 @@ target_include_directories(COLLISION_FINDER PUBLIC COLLISION_FINDER MD5)
 
 include_directories(src/dsa)
 
-set(DSA_SOURCES src/dsa/dsasystem.cpp)
+set(DSA_SOURCES
+        src/dsa/dsasystem.cpp
+)
 
 add_library(DSA ${DSA_SOURCES})
 target_include_directories(DSA PUBLIC DSA MD5)
