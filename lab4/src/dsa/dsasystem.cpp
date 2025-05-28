@@ -217,7 +217,6 @@ DigitalSignatureFormScheme::DigitalSignatureFormScheme(const std::string &hash)
 DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password)
     : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash)
 {
-    m_hash = helpers::hexStringToInt256(m_hashString) % m_q;
     int256 full_hash = helpers::hexStringToInt256(m_hashString);
     int256 adapted_hash = (full_hash << 32) | (full_hash >> 96);
     m_hash = adapted_hash % m_q;
@@ -294,23 +293,16 @@ void DigitalSignatureFormScheme::findG()
 void DigitalSignatureValidateScheme::chooseK()
 {
     std::random_device rd{};
-    boost::random::mt19937 base_rng{rd()};
-    boost::random::independent_bits_engine<boost::random::mt19937, 256, int256> bit_rng{base_rng};
+    boost::random::mt19937 gen{rd()};
 
-    int256 k;
-    const int256 max_acceptable = std::numeric_limits<int256>::max() - std::numeric_limits<int256>::max() % m_q;
-    do {
-        k = bit_rng();
-    } while (k >= max_acceptable || k == 0);
-
-    k = k % m_q;
-    m_k = k;
+    boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
+    m_k = dist(gen);
 }
 
 void DigitalSignatureValidateScheme::calculateR()
 {
-    const auto tmp = helpers::modExp(m_g, m_k, m_p) % m_q;//boost::multiprecision::powm(m_g, m_k, m_p);
-    m_r = static_cast<int256>(tmp % m_q);
+    const auto tmp = helpers::modExp(m_g, m_k, m_p);//boost::multiprecision::powm(m_g, m_k, m_p);
+    m_r = int256(tmp) % m_q;
 }
 
 void DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, const std::string &password)
@@ -324,9 +316,12 @@ void DigitalSignatureValidateScheme::calculateSecretKey(const bool &byPassword, 
     }
     boost::mt19937 gen(std::random_device{}());
     boost::random::uniform_int_distribution<int256> dist(1, m_q - 1);
-    do
-        m_secretKey = dist(gen);
-    while (m_secretKey > m_q);
+    m_secretKey = dist(gen);
+}
+
+void DigitalSignatureValidateScheme::generatePublicKey()
+{
+    m_publicKey = int1024(boost::multiprecision::powm(m_g, static_cast<int1024>(m_secretKey), m_p)); //(helpers::modExp(m_g, m_secretKey, m_p));
 }
 
 void DigitalSignatureValidateScheme::sign()
@@ -337,42 +332,41 @@ void DigitalSignatureValidateScheme::sign()
     std::cout << "[SIGN] private key x = " << m_secretKey << "\n";
     std::cout << "[SIGN] hash H(m) = " << m_hash << "\n\n";
 
-    // do {
-    chooseK();
-    std::cout << "[SIGN] chosen k = " << m_k << "\n";
-    calculateR();
-    std::cout << "[SIGN] computed r = " << m_r << "\n";
-    // } while (m_r == 0);
+    // Используем int512 для всех промежуточных вычислений
+    using dsa::int512;
 
-    const auto kInverse = (helpers::modInverse(m_k, m_q));
-    const auto term1 = m_hash + m_secretKey * m_r;
-    m_s = int256((kInverse * term1) % m_q);
+    do {
+        // Генерируем k и r пока r ≠ 0
+        do {
+            chooseK();
+            std::cout << "[SIGN] chosen k = " << m_k << "\n";
+            calculateR();
+            std::cout << "[SIGN] computed r = " << m_r << "\n";
+        } while (m_r == 0);
 
-    if (m_s == 0) {
-        sign();
-        return;
-    }
-    // do {
-    //     const auto kInv = helpers::modInverse(m_k, m_q);
-    //     std::cout << "[SIGN] k⁻¹ mod q = " << kInv << "\n";
-    //     cpp_int tmp = (kInv * (m_hash + m_secretKey * m_r)) % m_q;
-    //     m_s = tmp.convert_to<int256>();
-    //     std::cout << "[SIGN] computed s = " << m_s << "\n";
-    // } while (m_s == 0);
+        const auto kInverse = helpers::modInverse(m_k, m_q);
+
+        const int512 term1 = (int512(m_hash) + int512(m_secretKey) * m_r) % int512(m_q);
+
+        auto s_val = int512((kInverse * term1) % m_q);
+
+        if (s_val < 0)
+            s_val += int512(m_q);
+
+        m_s = static_cast<int256>(s_val);
+
+    } while (m_s == 0);
 
     std::cout << "[SIGN] signature pair (r, s) = ("
-              << m_r << ", " << m_s << ")" << "Len pair: " << helpers::bitLength(m_r) + helpers::bitLength(m_s) << " vs 2*N " << 2 * N <<"\n\n";
+              << m_r << ", " << m_s << ")\n"
+              << "Len pair: " << helpers::bitLength(m_r) + helpers::bitLength(m_s)
+              << " vs 2*N " << 2 * N << "\n\n";
 }
 
 void DigitalSignatureValidateScheme::formPair()
 {
     m_signature = std::make_pair(m_r, m_s);
     m_keys = std::make_pair(m_secretKey, m_publicKey);
-}
-
-void DigitalSignatureValidateScheme::generatePublicKey()
-{
-    m_publicKey = static_cast<int1024>(helpers::modExp(m_g, m_secretKey, m_p));//(boost::multiprecision::powm(m_g, static_cast<int1024>(m_secretKey), m_p));
 }
 
 bool DSACryptosystem::validateSignature() const
@@ -383,8 +377,9 @@ bool DSACryptosystem::validateSignature() const
     const auto &p = m_validateScheme->m_p;
     const auto &g = m_validateScheme->m_g;
     const auto &y = m_validateScheme->m_publicKey;
-    auto hashOrig = helpers::hexStringToInt256(m_hash) % q;
+    auto hashOrig = helpers::hexStringToInt256(m_hash);
     hashOrig = (hashOrig << 32) | (hashOrig >> 96);
+    hashOrig = (hashOrig % q);
     const auto &hashVal  = m_validateScheme->m_hash;
 
     const auto valid = helpers::validateDSAParameters(p, q, g, m_validateScheme->m_secretKey, y);
@@ -419,15 +414,18 @@ bool DSACryptosystem::validateSignature() const
     std::cout << "[VERIFY] Hash check passed\n\n";
 
     const auto w  = (helpers::modInverse(s, q));
-    const auto u1 = (hashVal * w) % q;
-    const auto u2 = (r * w) % q;
+    const int512 u1 = int512((hashVal) * w % q);
+    const int512 u2 = int512((r) * w % q);
+    // const auto u1 = (hashVal * w) % q;
+    // const auto u2 = (r * w) % q;
     std::cout << "[VERIFY] w  = s⁻¹ mod q = " << w  << "\n";
     std::cout << "[VERIFY] u1 = H(m)·w mod q = " << u1 << "\n";
     std::cout << "[VERIFY] u2 = r·w mod q = " << u2 << "\n\n";
 
     const auto lhs = boost::multiprecision::powm(g,  static_cast<int1024>(u1), p); //helpers::modExp(g, u1, p);
     const auto rhs = boost::multiprecision::powm(y,  static_cast<int1024>(u2), p); //helpers::modExp(y, u2, p);
-    const auto v   = ((lhs * rhs) % p) % q;
+    const auto product = (lhs * rhs) % p;
+    const auto v = product % q;
 
     std::cout << "[VERIFY] g^u1 mod p = " << lhs << "\n";
     std::cout << "[VERIFY] y^u2 mod p = " << rhs << "\n";

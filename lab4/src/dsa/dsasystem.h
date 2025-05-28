@@ -6,6 +6,7 @@
 #include "md5hash.h"
 
 namespace dsa {
+using int512 = boost::multiprecision::uint512_t;
 using int1024 = boost::multiprecision::uint1024_t;
 using int256 = boost::multiprecision::uint256_t;
 using cpp_int = boost::multiprecision::cpp_int;
