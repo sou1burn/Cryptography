@@ -14,9 +14,9 @@ using cpp_int = boost::multiprecision::cpp_int;
 struct DigitalSignatureFormScheme
 {
     explicit DigitalSignatureFormScheme(const std::string &hash);
-    int256 m_q {};
-    int1024 m_p {};
-    int1024 m_g {};
+    cpp_int m_q {};
+    cpp_int m_p {};
+    cpp_int m_g {};
     const std::string m_hash;
     void generateQ();
     void findP();
@@ -25,22 +25,22 @@ struct DigitalSignatureFormScheme
 
 struct DigitalSignatureValidateScheme
 {
-    explicit DigitalSignatureValidateScheme(const int256 &q, const int1024 &p, const int &L, const int1024 &g, const std::string &hash, const bool &byPassword, const std::string &password);
+    explicit DigitalSignatureValidateScheme(const cpp_int &q, const cpp_int &p, const int &L, const cpp_int &g, const std::string &hash, const bool &byPassword, const std::string &password);
     const int m_hashLength = 256;
     int m_keySize = 1024;
-    int1024 m_g {};
-    int256 m_q {};
-    int1024 m_p {};
-    int256 m_k {};
-    int256 m_r {};
-    int256 m_s {};
+    cpp_int m_g {};
+    cpp_int m_q {};
+    cpp_int m_p {};
+    cpp_int m_k {};
+    cpp_int m_r {};
+    cpp_int m_s {};
 
-    int256 m_secretKey; //x
-    int1024 m_publicKey; //y
-    int256 m_hash;
+    cpp_int m_secretKey; //x
+    cpp_int m_publicKey; //y
+    cpp_int m_hash;
     const std::string m_hashString;
-    std::pair<int256, int256> m_signature {};
-    std::pair<int256, int1024> m_keys {};
+    std::pair<cpp_int, cpp_int> m_signature {};
+    std::pair<cpp_int, cpp_int> m_keys {};
 
     void chooseK();
     void calculateR();
@@ -56,9 +56,9 @@ public:
     explicit DSACryptosystem(const int &keyLength, const std::string &password, const std::string &message, const bool &generateByPassword = false);
     ~DSACryptosystem() = default;
     bool validateSignature() const;
-    const std::pair<int256, int256> &signature() const;
-    const std::pair<int256, int1024> &keys() const;
-    std::pair<std::pair<int256, int1024>, std::pair<int256, std::pair<int256, int1024>>> generate2SignaturesWithOneK(const std::string &message1, const std::string &message2);
+    const std::pair<cpp_int, cpp_int> &signature() const;
+    const std::pair<cpp_int, cpp_int> &keys() const;
+    std::pair<std::pair<cpp_int, cpp_int>, std::pair<cpp_int, std::pair<cpp_int, cpp_int>>> generate2SignaturesWithOneK(const std::string &message1, const std::string &message2);
     void attack(const std::string &message1, const std::string &message2);
 
 private:

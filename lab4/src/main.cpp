@@ -65,10 +65,10 @@
 
 struct SuccessfulEntry {
     std::string message;
-    dsa::int256 r;
-    dsa::int256 s;
-    dsa::int256 privateKey;
-    dsa::int1024 publicKey;
+    dsa::cpp_int r;
+    dsa::cpp_int s;
+    dsa::cpp_int privateKey;
+    dsa::cpp_int publicKey;
 };
 
 std::vector<std::string> generateStrings(const int &n) {
@@ -138,15 +138,15 @@ int main() {
     }
 
     std::cout << "\nSuccessfully validated signatures: " << successfulEntries.size() << "\n";
-    for (const auto& entry : successfulEntries) {
-        std::cout << "\nMessage: " << entry.message
-                  << "\nSignature r: " << entry.r
-                  << "\nSignature s: " << entry.s
-                  << "\nPrivate key: " << entry.privateKey
-                  << "\nPublic key: " << entry.publicKey
-                  << "\n";
-    }
-
+    // for (const auto& entry : successfulEntries) {
+    //     std::cout << "\nMessage: " << entry.message
+    //               << "\nSignature r: " << entry.r
+    //               << "\nSignature s: " << entry.s
+    //               << "\nPrivate key: " << entry.privateKey
+    //               << "\nPublic key: " << entry.publicKey
+    //               << "\n";
+    // }
+    std::cout << "\n\n________________________________________________________________\n\n";
     auto dsa = dsa::DSACryptosystem(std::stoi(keyLength), password, "message1", byPassword);
     dsa.attack("message1", "message2");
 
