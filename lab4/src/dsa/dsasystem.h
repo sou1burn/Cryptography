@@ -26,7 +26,6 @@ struct DigitalSignatureFormScheme
 struct DigitalSignatureValidateScheme
 {
     explicit DigitalSignatureValidateScheme(const cpp_int &q, const cpp_int &p, const int &L, const cpp_int &g, const std::string &hash, const bool &byPassword, const std::string &password);
-    DigitalSignatureValidateScheme(const cpp_int &q, const cpp_int &p, const int &L, const cpp_int &g, const std::string &hash, const cpp_int& k);
     const int m_hashLength = 256;
     int m_keySize = 1024;
     cpp_int m_g {};

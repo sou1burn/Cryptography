@@ -205,17 +205,6 @@ DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const cpp_int &q,
     formPair();
 }
 
-DigitalSignatureValidateScheme::DigitalSignatureValidateScheme(const cpp_int &q, const cpp_int &p, const int &L, const cpp_int &g, const std::string &hash, const cpp_int& k)
-    : m_keySize(L), m_g(g), m_q(q), m_p(p), m_hashString(hash), m_k(k)
-{
-    cpp_int full_hash = helpers::hexStringToInt256(m_hashString);
-    cpp_int adapted_hash = (full_hash << 32) | (full_hash >> 96);
-    m_hash = adapted_hash % m_q;
-    calculateSecretKey(false, "");
-    generatePublicKey();
-
-}
-
 void DigitalSignatureFormScheme::generateQ()
 {
     boost::random::mt19937 gen(std::random_device{}());
@@ -314,7 +303,7 @@ const cpp_int &DigitalSignatureValidateScheme::calculateSecretKey(const bool &by
 
 void DigitalSignatureValidateScheme::generatePublicKey()
 {
-    m_publicKey = (boost::multiprecision::powm(m_g, (m_secretKey), m_p)); //(helpers::modExp(m_g, m_secretKey, m_p));
+    m_publicKey = boost::multiprecision::powm(m_g, (m_secretKey), m_p);
 }
 
 void DigitalSignatureValidateScheme::sign()
@@ -482,49 +471,6 @@ std::pair<std::pair<cpp_int, cpp_int>, std::pair<cpp_int, std::pair<cpp_int, cpp
 
     return {{r, s1}, {k, {r, s2}}};
 }
-
-// void DSACryptosystem::attack(const std::string &message1, const std::string &message2)
-// {
-//     const auto signatures = generate2SignaturesWithOneK(message1, message2);
-//     const auto &sign1 = signatures.first;
-//     const auto &sign2 = signatures.second.second;
-//     const auto &k = signatures.second.first;
-//     std::cout << "[ATTACK] Signature 1: (r, s) = (" << sign1.first << ", " << sign1.second << ")\n";
-//     std::cout << "[ATTACK] Signature 2: (r, s) = (" << sign2.first << ", " << sign2.second << ")\n";
-//     std::cout << "[ATTACK] k = " << k << "\n";
-//     // if (sign1.first != sign2.first) {
-//     //     std::cout << "[ATTACK] r values are different, cannot proceed with attack.\n";
-//     //     return;
-//     // }
-//
-//     auto ds = (sign1.second - sign2.second) % m_validateScheme->m_q;
-//     // if (ds < 0) ds += m_validateScheme->m_q;
-//     if (ds == 0) {
-//         std::cout << "[ATTACK] ERROR: s1 - s2 = 0 mod q\n";
-//         return;
-//     }
-//     const auto hash1 = helpers::hexStringToInt256(m_hasher.MD5(message1));
-//
-//     const auto hash2 = helpers::hexStringToInt256(m_hasher.MD5(message2));
-//     cpp_int dh = (hash1 - hash2) % m_validateScheme->m_q;
-//
-//     cpp_int inv_ds = (helpers::modInverse(ds, m_validateScheme->m_q));
-//     cpp_int k_recovered = (dh * inv_ds) % m_validateScheme->m_q;
-//
-//     auto s1 = sign1.second;
-//     auto inv_r = (helpers::modInverse(m_validateScheme->m_r, m_validateScheme->m_q));
-//     auto x_recovered = ((s1 * k_recovered - hash1) * inv_r) % m_validateScheme->m_q;
-//
-//     std::cout << "\n[ATTACK] Recovered k: " << k_recovered << "\n";
-//     std::cout << "[ATTACK] Original k:  " << k << "\n";
-//     std::cout << "[ATTACK] Recovered x: " << x_recovered << "\n";
-//     std::cout << "[ATTACK] Original  x: " << m_validateScheme->m_secretKey << "\n";
-//
-//     if (k_recovered == k && x_recovered == m_validateScheme->m_secretKey)
-//         std::cout << "[ATTACK] SUCCESS: Key recovered!\n";
-//     else
-//         std::cout << "[ATTACK] FAILED: Key recovery failed\n";
-// }
 
 void DSACryptosystem::attack(const std::string &message1, const std::string &message2)
 {
